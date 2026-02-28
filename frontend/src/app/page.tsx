@@ -105,9 +105,9 @@ function Hero() {
 /* ─── Product Mockup ─── */
 function ProductMockup() {
   return (
-    <div className="rounded-2xl border border-border-strong bg-surface shadow-2xl shadow-black/50 overflow-hidden">
+    <div className="rounded-2xl border border-border-strong bg-surface shadow-2xl shadow-black/50 overflow-hidden w-full max-w-xl mx-auto aspect-square flex flex-col">
       {/* Window chrome */}
-      <div className="flex items-center gap-2 px-4 py-3 border-b border-border-subtle bg-surface-elevated">
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-border-subtle bg-surface-elevated shrink-0">
         <div className="flex gap-1.5">
           <div className="w-3 h-3 rounded-full bg-[#ff5f57]" />
           <div className="w-3 h-3 rounded-full bg-[#febc2e]" />
@@ -116,21 +116,21 @@ function ProductMockup() {
         <span className="text-[11px] text-text-faint ml-2 font-mono">Sales Co-Pilot — Live Call with Sarah Chen</span>
       </div>
 
-      <div className="grid grid-cols-5">
+      <div className="grid grid-cols-5 flex-1 min-h-0">
         {/* Transcript */}
         <div className="col-span-3 p-6 border-r border-border-subtle bg-surface flex flex-col justify-center">
           <div className="text-[10px] font-semibold text-text-faint uppercase tracking-[0.15em] mb-4">Live Transcript</div>
           <div className="space-y-4">
             <div>
-              <span className="text-[10px] font-semibold text-brand-primary-light">You</span>
+              <span className="text-[10px] font-semibold text-brand-primary-light">Salesperson</span>
               <p className="text-[13px] text-text-primary mt-1 leading-relaxed">Thanks for joining today, Sarah. I know you&apos;ve been evaluating a few options...</p>
             </div>
             <div>
-              <span className="text-[10px] font-semibold text-status-success-light">Sarah Chen</span>
+              <span className="text-[10px] font-semibold text-status-success-light">Customer</span>
               <p className="text-[13px] text-text-primary mt-1 leading-relaxed">Yeah, we&apos;ve been looking at Gong pretty seriously, but the pricing has gotten out of hand.</p>
             </div>
             <div>
-              <span className="text-[10px] font-semibold text-brand-primary-light">You</span>
+              <span className="text-[10px] font-semibold text-brand-primary-light">Salesperson</span>
               <p className="text-[13px] text-text-primary mt-1 leading-relaxed">
                 I hear that a lot actually
                 <span className="inline-block w-[2px] h-3.5 bg-brand-primary-light animate-blink ml-0.5 align-text-bottom" />
@@ -142,30 +142,37 @@ function ProductMockup() {
         {/* Suggestion */}
         <div className="col-span-2 p-6 flex flex-col justify-center">
           <div className="text-[10px] font-semibold text-text-faint uppercase tracking-[0.15em] mb-4">AI Suggestion</div>
-          <div className="rounded-xl border border-status-warning/30 bg-status-warning/[0.04] p-5 shadow-sm">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="relative flex h-2.5 w-2.5 shrink-0">
+          <div className="rounded-xl border border-status-warning/30 bg-status-warning/[0.04] p-6 shadow-sm flex flex-col gap-5">
+            <div className="flex items-center gap-2">
+              <div className="relative flex h-2 w-2 shrink-0">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-status-warning-light opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-status-warning"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-status-warning"></span>
               </div>
-              <span className="text-[11px] font-bold text-status-warning-light uppercase tracking-wider">Competitor Intel</span>
+              <span className="text-[10px] font-bold text-status-warning-light uppercase tracking-wider">Objection: Price vs Gong</span>
             </div>
-            <p className="text-[13px] text-text-secondary leading-relaxed">
-              Gong charges <span className="text-text-primary font-semibold">$100–150/seat</span>. Our Pro plan is <span className="text-text-primary font-semibold">$99/seat</span> with real-time suggestions they don&apos;t offer.
+            
+            <p className="text-[12px] text-text-secondary leading-relaxed">
+              Gong charges <span className="text-text-primary font-semibold">$100–150/seat</span>. Our Pro plan is <span className="text-text-primary font-semibold">$99/seat</span>.
             </p>
-            <div className="mt-4 pl-3 border-l-2 border-status-warning/20">
-              <p className="text-[12px] text-text-muted italic leading-relaxed">&ldquo;The key difference is we help you during the call, not just after...&rdquo;</p>
+            
+            <div className="pl-4 border-l-2 border-brand-primary/40">
+              <p className="text-[9px] font-bold text-brand-primary-light uppercase tracking-widest mb-1.5 opacity-80">Talk Track</p>
+              <p className="text-[11px] text-text-primary italic leading-relaxed">&ldquo;While Gong does great post-call analysis, we provide real-time guidance during the call for 30% less. How valuable would live coaching be for your reps?&rdquo;</p>
             </div>
-            <div className="flex flex-wrap items-center gap-2 mt-5">
-              <span className="px-1.5 py-0.5 rounded text-[9px] bg-surface-elevated text-text-muted font-mono border border-border-subtle">web_search</span>
-              <span className="px-1.5 py-0.5 rounded text-[9px] bg-surface-elevated text-text-muted font-mono border border-border-subtle">product_context</span>
+            
+            <div className="flex flex-wrap items-center gap-2 mt-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[10px] font-semibold text-text-faint">Tool calls:</span>
+                <span className="px-1.5 py-0.5 rounded-md text-[8.5px] bg-surface-elevated text-text-muted font-mono border border-border-subtle shadow-sm">web_search:gong_pricing</span>
+                <span className="px-1.5 py-0.5 rounded-md text-[8.5px] bg-surface-elevated text-text-muted font-mono border border-border-subtle shadow-sm">db_lookup:gong_equivalents</span>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
       {/* Status bar */}
-      <div className="flex items-center gap-3 px-5 py-2.5 border-t border-border-subtle bg-surface-elevated">
+      <div className="flex items-center gap-3 px-5 py-2.5 border-t border-border-subtle bg-surface-elevated shrink-0 mt-auto">
         <div className="flex items-center gap-1.5">
           <div className="w-2 h-2 rounded-full bg-status-danger-light animate-pulse" />
           <span className="text-[10px] text-text-faint">Recording</span>
