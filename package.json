@@ -1,0 +1,11 @@
+{
+  "name": "sales-copilot",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "yarn --cwd frontend dev",
+    "build": "yarn --cwd frontend build",
+    "lint": "yarn --cwd frontend lint",
+    "install:frontend": "yarn --cwd frontend install"
+  }
+}

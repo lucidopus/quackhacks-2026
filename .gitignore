@@ -33,3 +33,6 @@ Thumbs.db
 
 # Implementation phases (internal docs)
 docs/phases/
+
+# Research (reference PDFs, not tracked)
+research/
