@@ -1,0 +1,7 @@
+ADP Technical Workshop:
+Creating Full Stack Application
+How do production-grade software applications get started? This workshop walks you through the first steps of creating a full stack application to help maintain and scale your project
+
+ADP Challenge:
+Hack the Sales Journey with AI
+Build a full stack AI powered solution that helps sales teams remember and execute follow-ups effortlessly
