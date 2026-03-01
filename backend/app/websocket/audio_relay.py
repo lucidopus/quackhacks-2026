@@ -16,6 +16,7 @@ import websockets
 
 from app.config import settings
 from app.database import get_supabase
+from app.services.call_manager import CallManager
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -52,6 +53,7 @@ async def listen_for_transcripts(
     call_id: str,
     speaker: str,
     client_ws: WebSocket | None = None,
+    classifier_callback = None,
 ):
     """Listen for transcript results from Scribe V2 and store in Supabase."""
     supabase = get_supabase()
@@ -69,15 +71,23 @@ async def listen_for_transcripts(
                 logger.info(f"✅ [{speaker}] {text}")
 
                 # Store in Supabase
+                segment = None
                 try:
-                    supabase.table("transcript_segments").insert({
+                    result = supabase.table("transcript_segments").insert({
                         "call_id": call_id,
                         "speaker": speaker,
                         "text": text.strip(),
                         "is_final": True,
                     }).execute()
+                    if result.data:
+                        segment = result.data[0]
                 except Exception as e:
                     logger.error(f"DB insert failed: {e}")
+
+                # Trigger classifier on committed segments
+                if classifier_callback and segment:
+                    # Run in background to not block WebSocket relay
+                    asyncio.create_task(classifier_callback(call_id, segment))
 
                 # Forward to browser
                 if client_ws:
@@ -118,16 +128,19 @@ async def listen_for_transcripts(
         logger.error(f"Transcript listener error [{speaker}]: {e}")
 
 
-async def handle_call_websocket(websocket: WebSocket, call_id: str):
+async def handle_call_websocket(websocket: WebSocket, call_id: str, client_id: str):
     """Main WebSocket handler for a live call session.
     
     Browser sends raw PCM int16 16kHz audio (base64-encoded).
     We relay it directly to Scribe V2 — no transcoding needed.
     """
     await websocket.accept()
-    logger.info(f"🔌 Call WebSocket connected: {call_id}")
+    logger.info(f"🔌 Call WebSocket connected: {call_id} (client: {client_id})")
 
     supabase = get_supabase()
+
+    # Create the call manager for this session (Phase 4)
+    call_manager = CallManager(call_id=call_id, client_id=client_id, client_ws=websocket)
 
     # Update call status
     try:
@@ -153,10 +166,22 @@ async def handle_call_websocket(websocket: WebSocket, call_id: str):
 
         # Start transcript listeners
         mic_listener_task = asyncio.create_task(
-            listen_for_transcripts(mic_scribe, call_id, "salesperson", websocket)
+            listen_for_transcripts(
+                mic_scribe, 
+                call_id, 
+                "salesperson", 
+                websocket,
+                classifier_callback=call_manager.on_committed_segment
+            )
         )
         speaker_listener_task = asyncio.create_task(
-            listen_for_transcripts(speaker_scribe, call_id, "client", websocket)
+            listen_for_transcripts(
+                speaker_scribe, 
+                call_id, 
+                "client", 
+                websocket,
+                classifier_callback=call_manager.on_committed_segment
+            )
         )
 
         chunk_count = 0

@@ -11,7 +11,7 @@ interface AudioCaptureState {
  * Hook that captures mic and speaker audio, converts to raw PCM 16kHz
  * via AudioWorklet, and streams base64-encoded PCM chunks via WebSocket.
  */
-export function useAudioPipeline(callId: string) {
+export function useAudioPipeline(callId: string, clientId: string) {
   const [state, setState] = useState<AudioCaptureState>({
     isCapturing: false,
     error: null,
@@ -28,7 +28,7 @@ export function useAudioPipeline(callId: string) {
       setState({ isCapturing: false, error: null });
 
       // 1. Open WebSocket to backend
-      const ws = new WebSocket(`ws://localhost:8000/ws/call/${callId}`);
+      const ws = new WebSocket(`ws://localhost:8000/ws/call/${callId}?client_id=${clientId}`);
       wsRef.current = ws;
 
       await new Promise<void>((resolve, reject) => {

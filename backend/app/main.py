@@ -19,6 +19,6 @@ app.include_router(calls.router)
 
 
 @app.websocket("/ws/call/{call_id}")
-async def call_websocket(websocket: WebSocket, call_id: str):
+async def call_websocket(websocket: WebSocket, call_id: str, client_id: str):
     """WebSocket endpoint for live call audio streaming."""
-    await handle_call_websocket(websocket, call_id)
+    await handle_call_websocket(websocket, call_id, client_id)

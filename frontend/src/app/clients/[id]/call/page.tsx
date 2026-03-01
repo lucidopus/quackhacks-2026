@@ -26,7 +26,7 @@ export default function CallPage({ params }: CallPageProps) {
   } | null>(null);
 
   const { isCapturing, error: captureError, startPipeline, stopPipeline } =
-    useAudioPipeline(callId);
+    useAudioPipeline(callId, clientId);
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
