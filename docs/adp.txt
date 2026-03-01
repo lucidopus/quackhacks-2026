@@ -6,7 +6,3 @@ ADP Challenge:
 Hack the Sales Journey with AI
 Build a full stack AI powered solution that helps sales teams remember and execute follow-ups effortlessly
 
-
-# Get a client ID from the database first
-curl http://localhost:8000/api/clients | python3 -m json.tool | head -5
-# Use that ID:
