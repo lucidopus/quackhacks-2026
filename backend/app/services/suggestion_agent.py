@@ -157,11 +157,14 @@ class SuggestionAgent:
                 for tool_call in tool_calls:
                     function_name = tool_call.function.name
                     function_args = json.loads(tool_call.function.bytes) if hasattr(tool_call.function, 'bytes') else json.loads(tool_call.function.arguments)
+                    logger.info(f"🔧 Tool call: {function_name}({json.dumps(function_args)})")
                     tool_tasks.append(call_tool(function_name, function_args))
                 
                 tool_results = await asyncio.gather(*tool_tasks)
                 
                 for i, tool_call in enumerate(tool_calls):
+                    result_preview = tool_results[i][:200] if len(tool_results[i]) > 200 else tool_results[i]
+                    logger.info(f"📥 Tool result [{tool_call.function.name}]: {result_preview}")
                     messages.append({
                         "tool_call_id": tool_call.id,
                         "role": "tool",
