@@ -57,6 +57,7 @@ export default function InsightsPage({ params }: InsightsPageProps) {
   const [insights, setInsights] = useState<Insights | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   // Poll for insights
   useEffect(() => {
@@ -82,7 +83,7 @@ export default function InsightsPage({ params }: InsightsPageProps) {
     fetchInsights();
     const id = setInterval(fetchInsights, 3000);
     return () => clearInterval(id);
-  }, [callId]);
+  }, [callId, refreshKey]);
 
   const formatTime = (iso: string | undefined) => {
     if (!iso) return "—";
@@ -148,6 +149,44 @@ export default function InsightsPage({ params }: InsightsPageProps) {
 
             {/* Error */}
             {error && <div className="text-center py-20 text-status-danger-light">{error}</div>}
+
+            {/* Analysis Failed State */}
+            {!loading && insights?.status === "failed" && (
+              <div className="flex flex-col items-center justify-center py-32 gap-6 text-center max-w-xl mx-auto">
+                <div className="w-16 h-16 rounded-full bg-status-danger/10 flex items-center justify-center">
+                  <svg className="w-8 h-8 text-status-danger-light" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+                  </svg>
+                </div>
+                <div className="space-y-2">
+                  <h2 className="text-xl font-bold text-text-primary">Analysis Failed</h2>
+                  <p className="text-text-muted text-sm leading-relaxed">
+                    We encountered an error while analyzing your call transcript. This is usually due to AI API rate limits on the free tier.
+                  </p>
+                  <p className="text-[11px] font-mono text-status-danger/60 bg-status-danger/5 p-3 rounded-lg border border-status-danger/10 mt-4 break-words">
+                    {insights.summary}
+                  </p>
+                </div>
+                <button 
+                  onClick={async () => {
+                    setLoading(true);
+                    setError(null);
+                    try {
+                      await fetch(`http://localhost:8000/api/calls/${callId}/insights?force=true`);
+                      // Increment refreshKey to restart the poller useEffect
+                      setRefreshKey(prev => prev + 1);
+                    } catch (e) {
+                      setError("Failed to re-trigger analysis");
+                      setLoading(false);
+                    }
+                  }}
+                  className="px-6 py-2.5 bg-brand-primary hover:bg-brand-primary-light text-white rounded-xl font-bold text-sm transition-all shadow-lg hover:shadow-brand-primary/20 disabled:opacity-50"
+                  disabled={loading}
+                >
+                  {loading ? "Re-triggering..." : "Retry Analysis"}
+                </button>
+              </div>
+            )}
 
             {insights?.status === "completed" && (
               <>

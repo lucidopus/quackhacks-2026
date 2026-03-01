@@ -86,8 +86,10 @@ async def get_call(call_id: str):
 
 
 @router.get("/{call_id}/insights")
-async def get_call_insights(call_id: str):
-    """Get post-call insights with call metadata for traceability."""
+async def get_call_insights(call_id: str, force: bool = False):
+    """Get post-call insights with call metadata for traceability.
+    Use force=True to re-trigger analysis if it failed or is missing.
+    """
     supabase = get_supabase()
 
     # Fetch insights
@@ -100,8 +102,20 @@ async def get_call_insights(call_id: str):
         .execute()
     )
 
-    if not result.data:
-        raise HTTPException(status_code=404, detail="No insights found for this call")
+    if not result.data or force:
+        # If no insights OR force=True, we check if call is completed and trigger
+        call_res = supabase.table("calls").select("status, client_id").eq("id", call_id).single().execute()
+        if call_res.data and call_res.data["status"] == "completed":
+            from app.services.post_call_agent import generate_insights
+            import asyncio
+            asyncio.ensure_future(generate_insights(call_id, call_res.data["client_id"]))
+            
+            # If we don't have a record yet, return a mock processing record so the UI polls
+            if not result.data:
+                return {"status": "processing", "call_id": call_id}
+            
+        if not result.data:
+            raise HTTPException(status_code=404, detail="No insights found for this call")
 
     insights = result.data[0]
 
