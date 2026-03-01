@@ -9,6 +9,7 @@ class Settings:
     elevenlabs_api_key: str = os.getenv("ELEVENLABS_API_KEY", "")
     tavily_api_key: str = os.getenv("TAVILY_API_KEY", "")
     groq_api_key: str = os.getenv("GROQ_API_KEY", "")
+    gemini_api_key: str = os.getenv("GEMINI_API_KEY", "")
     # AWS Bedrock — uses terminal login (no key needed when using aws sso/cli credentials)
     aws_region: str = os.getenv("AWS_REGION", "us-east-1")
     research_model_id: str = os.getenv(

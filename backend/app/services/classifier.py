@@ -11,6 +11,7 @@ import logging
 from groq import Groq
 
 from app.config import settings
+from app.services.pii_masking import anonymize_text
 
 logger = logging.getLogger(__name__)
 
@@ -94,6 +95,9 @@ async def classify_transcript(
             f"{prefix} [{seg.get('speaker', 'unknown').upper()}]: {seg.get('text', '')}"
         )
     transcript_text = "\n".join(transcript_lines)
+    
+    # Mask PII in the generated transcript text
+    transcript_text = anonymize_text(transcript_text)
 
     # Build context block
     context_block = ""

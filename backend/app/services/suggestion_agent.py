@@ -17,6 +17,7 @@ from typing import List, Dict, Any, Optional
 from groq import Groq
 from app.config import settings
 from app.mcp.server import web_search, fetch_product_context, get_client_research
+from app.services.pii_masking import anonymize_text
 
 logger = logging.getLogger(__name__)
 
@@ -242,6 +243,9 @@ class SuggestionAgent:
                 prefix = ">>>" if i == len(recent_segments) - 1 else "   "
                 transcript_lines.append(f"{prefix} {s['speaker'].upper()}: {s['text']}")
             transcript_text = "\n".join(transcript_lines)
+            
+            # Mask PII in the transcript text
+            transcript_text = anonymize_text(transcript_text)
             
             messages = [
                 {"role": "system", "content": system_prompt},

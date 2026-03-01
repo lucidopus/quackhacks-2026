@@ -6,46 +6,47 @@ After a call ends, makes ONE structured LLM call to generate:
 - Improvement suggestions
 - Task assignments to team members
 
-Uses Groq llama-3.3-70b-versatile with JSON structured output.
+Uses Gemini (google-genai) with JSON structured output via Pydantic schemas.
 """
 
 import json
 import logging
-from groq import Groq
+from typing import List, Literal, Optional
+from pydantic import BaseModel, Field
+from google import genai
+from google.genai import types
 
 from app.config import settings
 from app.database import get_supabase
+from app.services.pii_masking import anonymize_text
 
 logger = logging.getLogger(__name__)
 
-POST_CALL_MODEL = "llama-3.3-70b-versatile"
+POST_CALL_MODEL = "gemini-2.5-pro"
+
+class FollowUp(BaseModel):
+    action: str = Field(description="Specific, actionable follow-up task")
+    assigned_to: str = Field(description="Team member name from the roster")
+    role: str = Field(description="Their role (e.g., Account Executive, Sales Engineer, etc.)")
+    priority: str = Field(description="Priority: high, medium, or low")
+    due: str = Field(description="Concrete timeframe (e.g., 'Today', 'Within 48 hours', 'This week')")
+    context: str = Field(description="Why this matters — reference the specific moment in the call")
+
+class Coaching(BaseModel):
+    area: str = Field(description="Skill area (e.g., 'Discovery', 'Objection Handling', 'Closing')")
+    observation: str = Field(description="What happened in the call")
+    recommendation: str = Field(description="What to do differently next time")
+    example_script: Optional[str] = Field(None, description="Optional: exact phrasing the salesperson could use")
+
+class PostCallInsights(BaseModel):
+    summary: str = Field(description="2-3 sentence factual summary: who spoke, what was discussed, what was agreed.")
+    follow_ups: List[FollowUp] = Field(description="4-8 follow ups assigned to specific team members")
+    coaching: List[Coaching] = Field(description="2-3 constructive coaching points referencing specific call moments")
+    key_topics: List[str] = Field(description="Extract 3-5 key topics/products/competitors discussed")
 
 SYSTEM_PROMPT = """You are an expert sales call analyst for ADP. Your job: help sales teams REMEMBER and EXECUTE follow-ups effortlessly.
 
-Given a complete call transcript and the sales team roster, generate structured JSON:
-
-{
-    "summary": "2-3 sentence factual summary: who spoke, what was discussed, what was agreed.",
-    "follow_ups": [
-        {
-            "action": "Specific, actionable follow-up task",
-            "assigned_to": "Team member name from the roster",
-            "role": "Their role",
-            "priority": "high | medium | low",
-            "due": "Concrete timeframe (e.g., 'Today', 'Within 48 hours', 'This week')",
-            "context": "Why this matters — reference the specific moment in the call"
-        }
-    ],
-    "coaching": [
-        {
-            "area": "Skill area (e.g., 'Discovery', 'Objection Handling', 'Closing')",
-            "observation": "What happened in the call",
-            "recommendation": "What to do differently next time",
-            "example_script": "Optional: exact phrasing the salesperson could use"
-        }
-    ],
-    "key_topics": ["topic1", "topic2"]
-}
+Given a complete call transcript and the sales team roster, generate structured insights using the save_post_call_insights function.
 
 RULES:
 - follow_ups: Generate 4-8. Each MUST be assigned to a specific team member from the roster. Match by role:
@@ -100,6 +101,8 @@ async def generate_insights(call_id: str, client_id: str) -> dict:
             f"[{seg['speaker'].upper()}]: {seg['text']}"
             for seg in segments.data
         )
+        # Mask PII in the generated transcript text
+        transcript_text = anonymize_text(transcript_text)
         logger.info(f"📊 Transcript: {len(segments.data)} segments, {len(transcript_text)} chars")
         
         # 3. Fetch team members
@@ -128,26 +131,47 @@ FULL TRANSCRIPT ({len(segments.data)} segments):
 SALES TEAM (assign tasks to these people):
 {team_block}
 
-Generate a comprehensive analysis with summary, action items, improvement suggestions, and task assignments. Respond with JSON only."""
+Generate a comprehensive analysis with summary, action items, improvement suggestions, and task assignments. Call the function to save the results."""
 
-        client_groq = Groq(api_key=settings.groq_api_key)
+        client_gemini = genai.Client(api_key=settings.gemini_api_key)
         
+        def save_post_call_insights(
+            summary: str,
+            follow_ups: List[FollowUp],
+            coaching: List[Coaching],
+            key_topics: List[str]
+        ):
+            """Save the analyzed insights from the sales call."""
+            pass
+
         import time
         t1 = time.time()
-        response = client_groq.chat.completions.create(
+        
+        response = client_gemini.models.generate_content(
             model=POST_CALL_MODEL,
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": user_message},
-            ],
-            response_format={"type": "json_object"},
-            temperature=0.3,
-            max_tokens=2000,
+            contents=[types.Content(role="user", parts=[types.Part.from_text(text=user_message)])],
+            config=types.GenerateContentConfig(
+                system_instruction=SYSTEM_PROMPT,
+                temperature=0.3,
+                max_output_tokens=2048,
+                tools=[save_post_call_insights],
+                tool_config=types.ToolConfig(
+                    function_calling_config=types.FunctionCallingConfig(
+                        mode="ANY",
+                        allowed_function_names=["save_post_call_insights"]
+                    )
+                )
+            )
         )
         t2 = time.time()
         logger.info(f"📊 Post-call LLM completed in {t2-t1:.1f}s")
         
-        result = json.loads(response.choices[0].message.content)
+        if not response.function_calls:
+            raise ValueError("No function calls returned by Gemini.")
+            
+        fc = response.function_calls[0]
+        # fc.args is a dictionary mapping to the function arguments
+        result = dict(fc.args)
         
         # 6. Enrich follow_ups with team member IDs
         if team.data:
