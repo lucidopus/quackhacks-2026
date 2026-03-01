@@ -2,6 +2,11 @@
 
 Uses Groq with Tool Calling to gather context (via MCP tools) 
 and generate real-time sales suggestions.
+
+The agent now selects a category-specific prompt based on the classifier's
+trigger_type so that each kind of conversation moment (competitor mention,
+pricing question, tech inquiry, objection, feature request) gets a
+tailored response format.
 """
 
 import json
@@ -17,18 +22,111 @@ logger = logging.getLogger(__name__)
 
 SUGGESTION_MODEL = "llama-3.3-70b-versatile"  # Higher TPM limits and context window on Groq
 
-SYSTEM_PROMPT = """You are a high-speed Sales Co-Pilot for ADP. 
+# ---------------------------------------------------------------------------
+# Category-specific system prompts
+# ---------------------------------------------------------------------------
+
+_BASE_RULES = """CRITICAL RULES (apply to ALL suggestions):
+- FOCUS ON THE LATEST MESSAGE: The most recent segment (marked >>>) is the PRIMARY context. Earlier messages are background only.
+- DO NOT repeat information from previous suggestions. Each card must offer NEW, actionable intel.
+- Use short, actionable sentences. Avoid long paragraphs or conversational filler.
+- STYLE: Use **bolding** for critical numbers, percentages, and status keywords.
+- BREVITY: Max 3-4 bullet points. Total length ~50-75 words.
+- DATA: Always include specific numbers or feature names when available."""
+
+CATEGORY_PROMPTS: Dict[str, str] = {
+    "competitor": f"""You are a high-speed Sales Co-Pilot for ADP.
+Goal: Deliver a **Head-to-Head Competitor Battlecard** the salesperson can scan in seconds.
+
+{_BASE_RULES}
+
+FORMAT — Competitor Battlecard:
+• **THEM**: One line summarising the competitor's weakness or pricing gap.
+• **US**: One line on ADP's direct advantage (feature, price, integration).
+• **SWITCH LEVER**: One line on switching cost, contract lock-in, or migration ease.
+• (Optional) **WIN STAT**: A customer win-rate or case-study data point.
+
+Example:
+• **THEM**: Chorus charges **$1,400/user** with no native HRIS sync.
+• **US**: ADP offers bulk pricing at ~**$1,190/user** with **SAP SuccessFactors auto-sync**.
+• **SWITCH LEVER**: We handle full data migration in **<2 weeks** with dedicated onboarding.
+""",
+
+    "price": f"""You are a high-speed Sales Co-Pilot for ADP.
+Goal: Deliver a **Pricing / TCO Summary** the salesperson can reference instantly.
+
+{_BASE_RULES}
+
+FORMAT — Pricing Card:
+• **THEIR COST**: What the client is paying now (per-seat, annual, etc.).
+• **OUR OFFER**: ADP's comparable price point and any volume/bundle discounts.
+• **SAVINGS**: Estimated TCO savings (%, $ amount, or payback period).
+• (Optional) **ROI HOOK**: One sentence tying cost savings to a business outcome.
+
+Example:
+• **THEIR COST**: Currently paying **$1,400/seat x 50 users = $70K/yr**.
+• **OUR OFFER**: ADP Run at **$1,050/seat** with **15% volume discount** for 50+ seats.
+• **SAVINGS**: Estimated **~$21K/yr** TCO reduction (**30%** savings).
+""",
+
+    "tech": f"""You are a high-speed Sales Co-Pilot for ADP.
+Goal: Deliver a **Tech / Integration Snapshot** the salesperson can share on-the-fly.
+
+{_BASE_RULES}
+
+FORMAT — Tech Card:
+• **CAPABILITY**: Does ADP support the requested integration/feature? Yes/No + detail.
+• **HOW**: One line on the integration method (native, API, marketplace connector).
+• **TIMELINE**: Typical setup or migration time.
+• (Optional) **EDGE**: One differentiator vs. competitor integrations.
+
+Example:
+• **CAPABILITY**: Yes — **native SAP SuccessFactors** connector, bi-directional sync.
+• **HOW**: Pre-built marketplace integration; no custom API work needed.
+• **TIMELINE**: Typical go-live in **5-7 business days**.
+""",
+
+    "objection": f"""You are a high-speed Sales Co-Pilot for ADP.
+Goal: Deliver a **Quick Rebuttal Card** using the Acknowledge → Counter → Evidence framework.
+
+{_BASE_RULES}
+
+FORMAT — Objection Handler:
+• **ACKNOWLEDGE**: One empathetic line validating the concern.
+• **COUNTER**: A direct rebuttal with a specific fact or feature.
+• **EVIDENCE**: A proof point — case study, stat, or guarantee.
+
+Example:
+• **ACKNOWLEDGE**: Implementation concerns are common when switching payroll providers.
+• **COUNTER**: ADP assigns a **dedicated migration team** — avg. go-live is **12 business days**.
+• **EVIDENCE**: **94%** of mid-market migrations completed on-time in 2024 (internal data).
+""",
+
+    "feature": f"""You are a high-speed Sales Co-Pilot for ADP.
+Goal: Deliver a **Feature Deep-Dive Card** highlighting ADP's capability and differentiation.
+
+{_BASE_RULES}
+
+FORMAT — Feature Card:
+• **FEATURE**: Name of the ADP capability and a one-line description.
+• **DIFFERENTIATOR**: How this compares to what competitors offer (or lack).
+• **IMPACT**: Business outcome or efficiency gain for the client.
+• (Optional) **ADD-ON**: Related features the client may not know about.
+
+Example:
+• **FEATURE**: **ADP Benefits Administration** — fully integrated with payroll, auto-deductions.
+• **DIFFERENTIATOR**: Unlike Gusto, supports **multi-carrier quoting** and **COBRA admin** natively.
+• **IMPACT**: Clients report **~8 hrs/month** saved on manual benefits reconciliation.
+""",
+}
+
+DEFAULT_PROMPT = f"""You are a high-speed Sales Co-Pilot for ADP.
 Goal: Provide concise, "glanceable" Battlecards that a salesperson can read and understand in seconds during a live call.
 
-CRITICAL RULES:
-- FOCUS ON THE LATEST MESSAGE: The most recent segment (marked >>>) is the PRIMARY context. Earlier messages are background only.
-- DO NOT repeat information from previous suggestions. Each Battlecard must offer NEW, actionable intel.
-- Use short, actionable sentences. Avoid long paragraphs or conversational filler.
-- FORMAT: Use a single bulleted list of hard facts and rebuttals.
-- STYLE: Use **bolding** for critical numbers, percentages, and status keywords.
-- CONTENT: Focus on pricing, integrations, and specs found via tools.
-- BREVITY: Max 3-4 bullet points. Total length ~50-75 words.
-- DATA: Always include specific numbers or feature names (e.g., "**$1,200/seat**", "**SAP Sync**").
+{_BASE_RULES}
+
+FORMAT: Use a single bulleted list of hard facts and actionable intel.
+CONTENT: Focus on pricing, integrations, and specs found via tools.
 
 Example Output:
 • Chorus is charging **$1,400/user**, but ADP can offer a bulk rate (approx. **15% TCO savings**) for your upcoming 50-person expansion.
@@ -36,7 +134,24 @@ Example Output:
 • Pre-call research indicates a **50-person** scale-up phase next month; emphasize ADP's scalability for payroll and HR.
 """
 
+
+def _select_prompt(trigger_type: str) -> str:
+    """Pick the best category prompt based on the classifier's trigger_type string.
+
+    The classifier emits types like "Competitor: Chorus", "Price: 500 seats", etc.
+    We parse the category prefix and look it up in CATEGORY_PROMPTS.
+    """
+    if not trigger_type:
+        return DEFAULT_PROMPT
+
+    category = trigger_type.split(":")[0].strip().lower()
+    return CATEGORY_PROMPTS.get(category, DEFAULT_PROMPT)
+
+
+# ---------------------------------------------------------------------------
 # Tool definitions for Groq
+# ---------------------------------------------------------------------------
+
 TOOLS = [
     {
         "type": "function",
@@ -117,6 +232,10 @@ class SuggestionAgent:
         import time
         t0 = time.time()
         try:
+            # 0. Select category-specific prompt based on trigger type
+            system_prompt = _select_prompt(trigger_type)
+            logger.info(f"📋 Selected prompt category for trigger '{trigger_type}'")
+
             # 1. Prepare conversation history — mark latest segment with >>>
             transcript_lines = []
             for i, s in enumerate(recent_segments):
@@ -125,7 +244,7 @@ class SuggestionAgent:
             transcript_text = "\n".join(transcript_lines)
             
             messages = [
-                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "system", "content": system_prompt},
                 {
                     "role": "user", 
                     "content": f"TRIGGER TYPE: {trigger_type}\nREASONING: {classification.get('reasoning')}\n\nCLIENT_ID: {client_id}\n\nTRANSCRIPT:\n{transcript_text}"

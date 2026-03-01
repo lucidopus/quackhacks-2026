@@ -61,7 +61,7 @@ function SectionCard({
   data,
 }: {
   title: string;
-  data: Record<string, unknown>;
+  data?: Record<string, unknown>;
 }) {
   const [open, setOpen] = useState(false);
   if (!data || Object.keys(data).length === 0) return null;
@@ -161,7 +161,7 @@ export default function ClientDetailPage({
             .then((r) => r.ok ? r.json() : null)
             .then((r) => r && setResearch(r));
         }
-      } catch {}
+      } catch { }
     };
 
     es.onerror = () => {
@@ -290,13 +290,12 @@ export default function ClientDetailPage({
                 return (
                   <div
                     key={i}
-                    className={`flex items-start gap-2 ${
-                      ev.status === "completed"
-                        ? "text-green-400"
-                        : ev.status === "failed"
+                    className={`flex items-start gap-2 ${ev.status === "completed"
+                      ? "text-green-400"
+                      : ev.status === "failed"
                         ? "text-red-400"
                         : "text-amber-400"
-                    }`}
+                      }`}
                   >
                     <StatusIcon status={ev.status ?? ""} />
                     <span>
@@ -379,16 +378,16 @@ export default function ClientDetailPage({
               title="👥 People & Decision Makers"
               data={research.linkedin_data}
             />
-            {research.raw_research?.financial && (
+            {Boolean(research.raw_research?.financial) && (
               <SectionCard
                 title="💰 Financial Intelligence"
-                data={research.raw_research.financial}
+                data={research.raw_research!.financial as Record<string, unknown>}
               />
             )}
-            {research.raw_research?.tech && (
+            {Boolean(research.raw_research?.tech) && (
               <SectionCard
                 title="🛠 Technology Stack"
-                data={research.raw_research.tech}
+                data={research.raw_research!.tech as Record<string, unknown>}
               />
             )}
           </div>

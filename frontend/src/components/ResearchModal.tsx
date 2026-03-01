@@ -160,7 +160,7 @@ export function ResearchModal({
         if (ev.event === "status" && ev.agent) {
           setAgentStatuses((prev) => ({
             ...prev,
-            [ev.agent!]: ev.status,
+            [ev.agent!]: ev.status as "started" | "completed" | "failed" | "skipped",
           }));
         }
 
@@ -185,7 +185,7 @@ export function ResearchModal({
           });
           setPhase("done");
         }
-      } catch {}
+      } catch { }
     };
 
     es.onerror = () => {
@@ -263,17 +263,16 @@ export function ResearchModal({
               return (
                 <div
                   key={key}
-                  className={`flex items-center gap-2 px-2 py-2 rounded-lg text-xs transition-colors ${
-                    s === "completed"
-                      ? "bg-green-500/10 text-green-400"
-                      : s === "failed"
+                  className={`flex items-center gap-2 px-2 py-2 rounded-lg text-xs transition-colors ${s === "completed"
+                    ? "bg-green-500/10 text-green-400"
+                    : s === "failed"
                       ? "bg-red-500/10 text-red-400"
                       : s === "skipped"
-                      ? "bg-surface text-text-faint"
-                      : s === "started"
-                      ? "bg-amber-500/10 text-amber-400"
-                      : "text-text-faint"
-                  }`}
+                        ? "bg-surface text-text-faint"
+                        : s === "started"
+                          ? "bg-amber-500/10 text-amber-400"
+                          : "text-text-faint"
+                    }`}
                 >
                   <span className="text-base leading-none">
                     {AGENT_EMOJI[key]}
@@ -330,18 +329,18 @@ export function ResearchModal({
                       ev.status === "completed"
                         ? "text-green-400"
                         : ev.status === "failed"
-                        ? "text-red-400"
-                        : ev.status === "skipped"
-                        ? "text-text-faint"
-                        : "text-amber-400";
+                          ? "text-red-400"
+                          : ev.status === "skipped"
+                            ? "text-text-faint"
+                            : "text-amber-400";
                     const icon =
                       ev.status === "completed"
                         ? "✓"
                         : ev.status === "failed"
-                        ? "✗"
-                        : ev.status === "skipped"
-                        ? "–"
-                        : "⟳";
+                          ? "✗"
+                          : ev.status === "skipped"
+                            ? "–"
+                            : "⟳";
                     return (
                       <div key={i} className={`flex items-start gap-2 ${color}`}>
                         <span className="shrink-0 w-3">{icon}</span>
@@ -406,42 +405,42 @@ export function ResearchModal({
                 </div>
 
                 {/* Raw data sections */}
-                {(research.company_data ||
+                {Boolean(research.company_data ||
                   research.news_data ||
                   research.competitor_data ||
                   research.linkedin_data ||
                   research.raw_research?.financial ||
                   research.raw_research?.tech) && (
-                  <div className="p-6 space-y-3">
-                    <p className="text-xs font-semibold text-text-faint uppercase tracking-wider">
-                      Raw Intelligence Data
-                    </p>
-                    <SectionToggle
-                      title="🌐 Company & Website"
-                      data={research.company_data}
-                    />
-                    <SectionToggle
-                      title="📰 News & Events"
-                      data={research.news_data}
-                    />
-                    <SectionToggle
-                      title="⚔️ Competitive Landscape"
-                      data={research.competitor_data}
-                    />
-                    <SectionToggle
-                      title="👥 People & Decision Makers"
-                      data={research.linkedin_data}
-                    />
-                    <SectionToggle
-                      title="💰 Financial Intelligence"
-                      data={research.raw_research?.financial}
-                    />
-                    <SectionToggle
-                      title="🛠 Technology Stack"
-                      data={research.raw_research?.tech}
-                    />
-                  </div>
-                )}
+                    <div className="p-6 space-y-3">
+                      <p className="text-xs font-semibold text-text-faint uppercase tracking-wider">
+                        Raw Intelligence Data
+                      </p>
+                      <SectionToggle
+                        title="🌐 Company & Website"
+                        data={research.company_data}
+                      />
+                      <SectionToggle
+                        title="📰 News & Events"
+                        data={research.news_data}
+                      />
+                      <SectionToggle
+                        title="⚔️ Competitive Landscape"
+                        data={research.competitor_data}
+                      />
+                      <SectionToggle
+                        title="👥 People & Decision Makers"
+                        data={research.linkedin_data}
+                      />
+                      <SectionToggle
+                        title="💰 Financial Intelligence"
+                        data={research.raw_research?.financial as Record<string, unknown> | undefined}
+                      />
+                      <SectionToggle
+                        title="🛠 Technology Stack"
+                        data={research.raw_research?.tech as Record<string, unknown> | undefined}
+                      />
+                    </div>
+                  )}
               </div>
             )}
           </div>
