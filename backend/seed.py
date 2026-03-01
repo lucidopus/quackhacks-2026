@@ -61,6 +61,24 @@ clients = [
     }
 ]
 
+# Added Ken Krupa (Chubb) seed entry
+clients.append({
+    "name": "Ken Krupa",
+    "company": "Chubb",
+    "role": "Senior Risk Manager",
+    "email": "ken.krupa@chubb.com",
+    "phone": "+1-555-0110",
+    "meeting_date": "2026-03-08",
+    "meeting_time": "09:00:00",
+    "meeting_link": "https://meet.google.com/ken-krupa",
+    "profile_data": {
+        "source": "linkedin",
+        "profile_url": "https://www.linkedin.com/in/kekrupa/",
+        "qualified": True,
+        "interest_level": "high"
+    }
+})
+
 def seed_database():
     print("Seeding demo clients into Supabase...")
     try:
