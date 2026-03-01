@@ -105,7 +105,7 @@ function Hero() {
 /* ─── Product Mockup ─── */
 function ProductMockup() {
   return (
-    <div className="rounded-2xl border border-border-strong bg-surface shadow-2xl shadow-black/50 overflow-hidden w-full max-w-xl mx-auto aspect-square flex flex-col">
+    <div className="rounded-2xl border border-border-strong bg-surface shadow-2xl shadow-black/50 overflow-hidden w-full max-w-xl mx-auto flex flex-col">
       {/* Window chrome */}
       <div className="flex items-center gap-2 px-4 py-3 border-b border-border-subtle bg-surface-elevated shrink-0">
         <div className="flex gap-1.5">
@@ -118,7 +118,7 @@ function ProductMockup() {
 
       <div className="grid grid-cols-5 flex-1 min-h-0">
         {/* Transcript */}
-        <div className="col-span-3 p-6 border-r border-border-subtle bg-surface flex flex-col justify-center">
+        <div className="col-span-3 p-6 border-r border-border-subtle bg-surface flex flex-col justify-start">
           <div className="text-[10px] font-semibold text-text-faint uppercase tracking-[0.15em] mb-4">Live Transcript</div>
           <div className="space-y-4">
             <div>
@@ -140,7 +140,7 @@ function ProductMockup() {
         </div>
 
         {/* Suggestion */}
-        <div className="col-span-2 p-6 flex flex-col justify-center">
+        <div className="col-span-2 p-6 flex flex-col justify-start">
           <div className="text-[10px] font-semibold text-text-faint uppercase tracking-[0.15em] mb-4">AI Suggestion</div>
           <div className="rounded-xl border border-status-warning/30 bg-status-warning/[0.04] p-6 shadow-sm flex flex-col gap-5">
             <div className="flex items-center gap-2">

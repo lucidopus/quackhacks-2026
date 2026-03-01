@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from app.routers import health, clients
 
 app = FastAPI(title="Sales Co-Pilot Backend")
 
@@ -11,7 +12,5 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-@app.get("/health")
-async def health():
-    return {"status": "ok", "service": "sales-copilot-backend"}
+app.include_router(health.router)
+app.include_router(clients.router)
