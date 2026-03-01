@@ -42,9 +42,9 @@ export function useAudioPipeline(callId: string, clientId: string) {
           const data = JSON.parse(event.data);
           
           if (data.type === "suggestion_trigger") {
-            // Add a new "thinking" suggestion
+            // Add a new "thinking" suggestion with ID from backend
             const newSuggestion: Suggestion = {
-              id: Math.random().toString(36).substr(2, 9),
+              id: data.id || Math.random().toString(36).substr(2, 9),
               type: "trigger",
               trigger_type: data.trigger_type,
               content: "",
@@ -58,16 +58,16 @@ export function useAudioPipeline(callId: string, clientId: string) {
             }));
           } 
           else if (data.type === "suggestion_content") {
-            // Update the most recent thinking suggestion of this type
+            // Update the suggestion by ID
             setState(prev => {
               const newSuggestions = [...prev.suggestions];
-              const idx = newSuggestions.findIndex(s => s.status === "thinking" && s.trigger_type === data.trigger_type);
+              const idx = newSuggestions.findIndex(s => s.id === data.id);
               
               if (idx !== -1) {
                 newSuggestions[idx] = {
                   ...newSuggestions[idx],
-                  content: data.content,
-                  status: data.status === "done" ? "done" : "error"
+                  content: data.status === "error" ? data.error : data.content,
+                  status: data.status as "thinking" | "done" | "error"
                 };
               }
               return { ...prev, suggestions: newSuggestions };

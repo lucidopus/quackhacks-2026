@@ -115,34 +115,36 @@ class CallManager:
     async def handle_trigger(self, classification: dict):
         """Handle a classifier trigger.
 
-        Phase 4: Logs the trigger event and notifies frontend.
-        Phase 5: Will call the suggestion agent with full MCP tool access.
+        Generates a unique ID for this suggestion to track it through the pipeline.
         """
+        import uuid
+        suggestion_id = str(uuid.uuid4())
         trigger_type = classification.get("trigger_type", "unknown")
         confidence = classification.get("confidence", 0.0)
         reasoning = classification.get("reasoning", "")
 
         logger.info(
-            f"💡 [Phase 4] Notifying frontend of trigger for call {self.call_id}:\n"
-            f"   type={trigger_type} | confidence={confidence:.2f}\n"
-            f"   reason={reasoning}"
+            f"💡 Trigger detected for call {self.call_id}: {trigger_type} "
+            f"(id={suggestion_id})"
         )
 
         # Notify frontend so it can show a "Thinking..." or "Analyzing..." state
         if self.client_ws:
             try:
                 await self.client_ws.send_json({
+                    "id": suggestion_id,
                     "type": "suggestion_trigger",
                     "trigger_type": trigger_type,
                     "confidence": confidence,
                     "reasoning": reasoning,
-                    "status": "thinking", # Phase 4 identifies trigger, Phase 5 generates content
+                    "status": "thinking",
                 })
             except Exception as e:
                 logger.error(f"Failed to send trigger to frontend: {e}")
 
         # Phase 5: Active Suggestion Generation
         asyncio.create_task(self.suggestion_agent.generate(
+            suggestion_id=suggestion_id,
             call_id=self.call_id,
             client_id=self.client_id,
             trigger_type=trigger_type,

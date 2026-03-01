@@ -102,6 +102,7 @@ class SuggestionAgent:
 
     async def generate(
         self, 
+        suggestion_id: str,
         call_id: str, 
         client_id: str, 
         trigger_type: str, 
@@ -167,6 +168,7 @@ class SuggestionAgent:
             # 5. Stream back to frontend
             if self.client_ws:
                 await self.client_ws.send_json({
+                    "id": suggestion_id,
                     "type": "suggestion_content",
                     "call_id": call_id,
                     "trigger_type": trigger_type,
@@ -180,7 +182,9 @@ class SuggestionAgent:
             logger.error(f"Error in SuggestionAgent: {e}", exc_info=True)
             if self.client_ws:
                 await self.client_ws.send_json({
+                    "id": suggestion_id,
                     "type": "suggestion_content",
+                    "trigger_type": trigger_type,
                     "error": "Failed to generate suggestion",
                     "status": "error"
                 })
