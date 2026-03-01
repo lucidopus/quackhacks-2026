@@ -14,7 +14,7 @@ export default function ClientsLayout({ children }: { children: React.ReactNode 
                 <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
               </svg>
             </div>
-            <h1 className="text-lg font-semibold tracking-tight">Sales Co-Pilot</h1>
+            <h1 className="text-lg font-semibold tracking-tight">Wingman</h1>
           </Link>
           <nav className="flex items-center gap-4">
             <ThemeToggle />

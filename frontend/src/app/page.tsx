@@ -31,7 +31,7 @@ function Navbar() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
             </svg>
           </div>
-          <span className="font-semibold text-lg tracking-tight">Sales Co-Pilot</span>
+          <span className="font-semibold text-lg tracking-tight">Wingman</span>
         </Link>
 
         <div className="hidden md:flex items-center gap-8">
@@ -114,7 +114,7 @@ function ProductMockup() {
           <div className="w-3 h-3 rounded-full bg-[#febc2e]" />
           <div className="w-3 h-3 rounded-full bg-[#28c840]" />
         </div>
-        <span className="text-[11px] text-text-faint ml-2 font-mono">Sales Co-Pilot — Live Call with Sarah Chen</span>
+        <span className="text-[11px] text-text-faint ml-2 font-mono">Wingman — Live Call with Sarah Chen</span>
       </div>
 
       <div className="grid grid-cols-5 flex-1 min-h-0">
@@ -371,7 +371,7 @@ function Footer() {
           <div className="w-6 h-6 rounded-md bg-gradient-to-br from-brand-primary to-brand-accent-dark flex items-center justify-center">
             <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg>
           </div>
-          <span className="text-sm text-text-muted">Sales Co-Pilot</span>
+          <span className="text-sm text-text-muted">Wingman</span>
         </div>
         <div className="flex items-center gap-6 text-sm text-text-faint">
           <span>QuackHacks &apos;26</span>

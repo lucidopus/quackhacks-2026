@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Sales Co-Pilot — AI-Powered Real-Time Sales Intelligence",
+  title: "Wingman — AI-Powered Real-Time Sales Intelligence",
   description:
     "Research prospects in seconds, get AI suggestions during live calls, and never miss a follow-up. The intelligent sales partner built for modern teams.",
 };
