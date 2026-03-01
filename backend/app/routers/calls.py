@@ -40,7 +40,7 @@ async def create_call(request: CreateCallRequest):
 
 @router.patch("/{call_id}")
 async def update_call(call_id: str, request: UpdateCallRequest):
-    """Update call status."""
+    """Update call status. Triggers post-call analysis on completion."""
     supabase = get_supabase()
 
     update_data = {"status": request.status}
@@ -55,6 +55,14 @@ async def update_call(call_id: str, request: UpdateCallRequest):
 
     if not result.data:
         raise HTTPException(status_code=404, detail="Call not found")
+
+    # Trigger post-call analysis on completion
+    if request.status == "completed":
+        client_id = result.data[0].get("client_id", "")
+        if client_id:
+            import asyncio
+            from app.services.post_call_agent import generate_insights
+            asyncio.ensure_future(generate_insights(call_id, client_id))
 
     return result.data[0]
 
@@ -75,3 +83,46 @@ async def get_call(call_id: str):
         **call.data,
         "transcript_count": segments.count or 0,
     }
+
+
+@router.get("/{call_id}/insights")
+async def get_call_insights(call_id: str):
+    """Get post-call insights with call metadata for traceability."""
+    supabase = get_supabase()
+
+    # Fetch insights
+    result = (
+        supabase.table("call_insights")
+        .select("*")
+        .eq("call_id", call_id)
+        .order("created_at", desc=True)
+        .limit(1)
+        .execute()
+    )
+
+    if not result.data:
+        raise HTTPException(status_code=404, detail="No insights found for this call")
+
+    insights = result.data[0]
+
+    # Fetch call metadata for traceability
+    try:
+        call = supabase.table("calls").select("started_at, ended_at, client_id").eq("id", call_id).single().execute()
+        if call.data:
+            insights["call_started_at"] = call.data.get("started_at")
+            insights["call_ended_at"] = call.data.get("ended_at")
+            
+            # Fetch transcript segment count
+            seg_count = supabase.table("transcript_segments").select("id", count="exact").eq("call_id", call_id).execute()
+            insights["transcript_segments"] = seg_count.count or 0
+
+            # Fetch client info
+            client = supabase.table("clients").select("name, company, role").eq("id", call.data["client_id"]).single().execute()
+            if client.data:
+                insights["client_name"] = client.data["name"]
+                insights["client_company"] = client.data.get("company", "")
+                insights["client_role"] = client.data.get("role", "")
+    except Exception:
+        pass
+
+    return insights

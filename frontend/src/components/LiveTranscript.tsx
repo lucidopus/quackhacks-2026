@@ -8,7 +8,7 @@ interface LiveTranscriptProps {
   segments: TranscriptSegment[];
 }
 
-export function LiveTranscript({ callId, segments }: LiveTranscriptProps) {
+export function LiveTranscript({ segments }: LiveTranscriptProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom when new segments arrive

@@ -14,7 +14,12 @@ interface Client {
   meeting_date: string;
   meeting_time: string;
   meeting_link: string;
-  profile_data: any;
+  profile_data: Record<string, unknown>;
+}
+
+interface CallInfo {
+  id: string;
+  status: string;
 }
 
 async function getClients() {
@@ -32,8 +37,32 @@ async function getClients() {
   return data as Client[];
 }
 
+async function getLatestCalls(clientIds: string[]): Promise<Record<string, CallInfo>> {
+  if (clientIds.length === 0) return {};
+  const supabase = await createClient();
+  
+  // Fetch the most recent call for each client
+  const { data, error } = await supabase
+    .from("calls")
+    .select("id, client_id, status")
+    .in("client_id", clientIds)
+    .order("created_at", { ascending: false });
+
+  if (error || !data) return {};
+
+  // Keep only the latest call per client
+  const callMap: Record<string, CallInfo> = {};
+  for (const call of data) {
+    if (!callMap[call.client_id]) {
+      callMap[call.client_id] = { id: call.id, status: call.status };
+    }
+  }
+  return callMap;
+}
+
 export default async function ClientsPage() {
   const clients = await getClients();
+  const callMap = await getLatestCalls(clients.map(c => c.id));
 
   return (
     <div className="space-y-6">
@@ -53,7 +82,11 @@ export default async function ClientsPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {clients.map((client) => (
-            <ClientCard key={client.id} client={client} />
+            <ClientCard 
+              key={client.id} 
+              client={client} 
+              latestCall={callMap[client.id] || null}
+            />
           ))}
         </div>
       )}

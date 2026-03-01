@@ -68,12 +68,8 @@ export default function CallPage({ params }: CallPageProps) {
     };
   }, [callStatus]);
 
-  // Sync isCapturing → callStatus
-  useEffect(() => {
-    if (isCapturing && callStatus === "listening") {
-      setCallStatus("active");
-    }
-  }, [isCapturing, callStatus]);
+  // Derive effective call status — avoids setState inside effect
+  const effectiveCallStatus = isCapturing && callStatus === "listening" ? "active" : callStatus;
 
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60)
@@ -132,7 +128,7 @@ export default function CallPage({ params }: CallPageProps) {
           </div>
 
           <div className="flex items-center gap-2">
-            {callStatus === "active" && (
+            {effectiveCallStatus === "active" && (
               <>
                 <div className="w-2 h-2 rounded-full bg-status-danger-light animate-pulse" />
                 <span className="text-xs text-text-faint">Recording</span>
@@ -141,7 +137,7 @@ export default function CallPage({ params }: CallPageProps) {
                 </span>
               </>
             )}
-            {callStatus === "ended" && (
+            {effectiveCallStatus === "ended" && (
               <>
                 <div className="w-2 h-2 rounded-full bg-text-faint" />
                 <span className="text-xs text-text-faint">
@@ -208,7 +204,7 @@ export default function CallPage({ params }: CallPageProps) {
             </div>
           )}
 
-          {callStatus === "pending" && (
+          {effectiveCallStatus === "pending" && (
             <button
               onClick={handleStartListening}
               className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl bg-gradient-to-r from-brand-primary to-brand-accent-dark font-semibold text-white hover:shadow-xl hover:shadow-brand-primary/25 active:scale-[0.97] transition-all duration-200 cursor-pointer"
@@ -220,7 +216,7 @@ export default function CallPage({ params }: CallPageProps) {
             </button>
           )}
 
-          {callStatus === "listening" && (
+          {effectiveCallStatus === "listening" && (
             <div className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl bg-surface-elevated border border-border-subtle text-text-muted font-medium">
               <svg className="w-5 h-5 animate-spin" viewBox="0 0 24 24" fill="none">
                 <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" strokeDasharray="60" strokeDashoffset="15" />
@@ -229,7 +225,7 @@ export default function CallPage({ params }: CallPageProps) {
             </div>
           )}
 
-          {callStatus === "active" && (
+          {effectiveCallStatus === "active" && (
             <button
               onClick={handleEndCall}
               className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl bg-status-danger font-semibold text-white hover:bg-status-danger-light active:scale-[0.97] transition-all duration-200 cursor-pointer"
@@ -241,7 +237,7 @@ export default function CallPage({ params }: CallPageProps) {
             </button>
           )}
 
-          {callStatus === "ended" && (
+          {effectiveCallStatus === "ended" && (
             <div className="flex items-center gap-4">
               <div className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-surface-elevated border border-border-subtle text-text-muted font-medium">
                 <svg className="w-5 h-5 text-status-success" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -249,6 +245,15 @@ export default function CallPage({ params }: CallPageProps) {
                 </svg>
                 Call Ended
               </div>
+              <a
+                href={`/clients/${clientId}/insights?callId=${callId}`}
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-brand-primary to-brand-accent-dark font-semibold text-white hover:shadow-xl hover:shadow-brand-primary/25 active:scale-[0.97] transition-all duration-200"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3v11.25A2.25 2.25 0 006 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0118 16.5h-2.25m-7.5 0h7.5m-7.5 0l-1 3m8.5-3l1 3m0 0l.5 1.5m-.5-1.5h-9.5m0 0l-.5 1.5" />
+                </svg>
+                Show Call Insights
+              </a>
               <a
                 href="/clients"
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-border-strong text-text-secondary font-medium hover:text-text-primary hover:bg-surface-elevated transition-all"

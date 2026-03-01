@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Clock, Building2, Briefcase, Video, Beaker } from "lucide-react";
+import { Clock, Building2, Briefcase, Video, Beaker, BarChart3 } from "lucide-react";
 
 interface Client {
   id: string;
@@ -13,10 +13,15 @@ interface Client {
   meeting_date: string;
   meeting_time: string;
   meeting_link: string;
-  profile_data: any;
+  profile_data: Record<string, unknown>;
 }
 
-export function ClientCard({ client }: { client: Client }) {
+interface CallInfo {
+  id: string;
+  status: string;
+}
+
+export function ClientCard({ client, latestCall }: { client: Client; latestCall: CallInfo | null }) {
   const router = useRouter();
 
   const formatMeetingTime = (dateStr: string, timeStr: string) => {
@@ -41,6 +46,8 @@ export function ClientCard({ client }: { client: Client }) {
   };
 
   const today = isToday(client.meeting_date);
+  const isCompleted = latestCall?.status === "completed";
+  const isActive = latestCall?.status === "active";
 
   const handleJoinMeet = async () => {
     try {
@@ -69,12 +76,36 @@ export function ClientCard({ client }: { client: Client }) {
     }
   };
 
+  const statusDisplay = () => {
+    if (isCompleted) {
+      return (
+        <span className="inline-flex items-center rounded-full bg-status-success/15 px-2.5 py-1 text-xs font-semibold text-status-success-light border border-status-success/20">
+          ✓ Completed
+        </span>
+      );
+    }
+    if (isActive) {
+      return (
+        <span className="inline-flex items-center rounded-full bg-brand-primary/15 px-2.5 py-1 text-xs font-semibold text-brand-primary-light border border-brand-primary/20 animate-pulse">
+          ● Live
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center rounded-full bg-surface-elevated px-2.5 py-1 text-xs font-medium text-text-faint border border-border-subtle">
+        Not Started
+      </span>
+    );
+  };
+
   return (
     <div 
       className={`group flex flex-col rounded-2xl border bg-surface/50 backdrop-blur-sm card-hover transition-all ${
-        today 
-          ? 'border-brand-primary/50 shadow-md shadow-brand-primary/10' 
-          : 'border-border-subtle hover:border-border-strong shadow-sm'
+        isCompleted
+          ? 'border-status-success/30 shadow-sm'
+          : today 
+            ? 'border-brand-primary/50 shadow-md shadow-brand-primary/10' 
+            : 'border-border-subtle hover:border-border-strong shadow-sm'
       }`}
     >
       {/* Header — time + status */}
@@ -83,9 +114,7 @@ export function ClientCard({ client }: { client: Client }) {
           <Clock className="w-4 h-4" />
           {formatMeetingTime(client.meeting_date, client.meeting_time)}
         </div>
-        <span className="inline-flex items-center rounded-full bg-surface-elevated px-2.5 py-1 text-xs font-medium text-text-faint border border-border-subtle">
-          Not Started
-        </span>
+        {statusDisplay()}
       </div>
 
       {/* Body — name, company, role */}
@@ -112,23 +141,36 @@ export function ClientCard({ client }: { client: Client }) {
       </div>
 
       {/* Actions */}
-      <div className="p-6 pt-0 mt-auto grid grid-cols-2 gap-3">
-        <button 
-          onClick={() => console.log('Research pipeline coming in Phase 2')}
-          className="flex justify-center items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-xl border border-border-strong bg-surface-elevated text-text-secondary hover:text-foreground hover:border-text-faint transition-colors cursor-pointer"
-        >
-          <Beaker className="w-4 h-4" />
-          Research
-        </button>
-        <button 
-          onClick={handleJoinMeet}
-          className="flex justify-center items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-xl border border-transparent bg-gradient-to-r from-brand-primary to-brand-accent-dark text-white hover:shadow-lg hover:shadow-brand-primary/25 active:scale-[0.97] transition-all duration-200 cursor-pointer"
-        >
-          <Video className="w-4 h-4" />
-          Join Meet
-        </button>
+      <div className="p-6 pt-0 mt-auto flex flex-col gap-3">
+        {isCompleted && latestCall ? (
+          /* Completed: show only View Call Insights */
+          <button
+            onClick={() => router.push(`/clients/${client.id}/insights?callId=${latestCall.id}`)}
+            className="flex justify-center items-center gap-2 w-full px-4 py-3 text-sm font-semibold rounded-xl bg-gradient-to-r from-status-success to-status-success-light text-white hover:shadow-lg hover:shadow-status-success/25 active:scale-[0.97] transition-all duration-200 cursor-pointer"
+          >
+            <BarChart3 className="w-4 h-4" />
+            View Call Insights
+          </button>
+        ) : (
+          /* Not completed: show Research + Join Meet */
+          <div className="grid grid-cols-2 gap-3">
+            <button 
+              onClick={() => console.log('Research pipeline coming in Phase 2')}
+              className="flex justify-center items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-xl border border-border-strong bg-surface-elevated text-text-secondary hover:text-foreground hover:border-text-faint transition-colors cursor-pointer"
+            >
+              <Beaker className="w-4 h-4" />
+              Research
+            </button>
+            <button 
+              onClick={handleJoinMeet}
+              className="flex justify-center items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-xl border border-transparent bg-gradient-to-r from-brand-primary to-brand-accent-dark text-white hover:shadow-lg hover:shadow-brand-primary/25 active:scale-[0.97] transition-all duration-200 cursor-pointer"
+            >
+              <Video className="w-4 h-4" />
+              Join Meet
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
 }
-

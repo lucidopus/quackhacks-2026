@@ -1,3 +1,4 @@
+import Link from "next/link";
 import AnimateOnScroll from "@/components/AnimateOnScroll";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
@@ -24,14 +25,14 @@ function Navbar() {
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border-subtle backdrop-blur-2xl bg-background/70">
       <div className="mx-auto max-w-7xl px-6 h-16 flex items-center justify-between">
-        <a href="/" className="flex items-center gap-2.5 group">
+        <Link href="/" className="flex items-center gap-2.5 group">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-primary to-brand-accent-dark flex items-center justify-center shadow-lg shadow-brand-primary/20 group-hover:shadow-brand-primary/40 transition-shadow">
             <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
             </svg>
           </div>
           <span className="font-semibold text-lg tracking-tight">Sales Co-Pilot</span>
-        </a>
+        </Link>
 
         <div className="hidden md:flex items-center gap-8">
           {["Problem", "How It Works", "Features"].map((item) => (
