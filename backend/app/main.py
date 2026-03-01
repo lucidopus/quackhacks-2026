@@ -1,6 +1,6 @@
 from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import health, clients, calls
+from app.routers import health, clients, calls, research
 from app.websocket.audio_relay import handle_call_websocket
 
 app = FastAPI(title="Sales Co-Pilot Backend")
@@ -16,7 +16,7 @@ app.add_middleware(
 app.include_router(health.router)
 app.include_router(clients.router)
 app.include_router(calls.router)
-# app.include_router(research.router)
+app.include_router(research.router)
 
 
 @app.websocket("/ws/call/{call_id}")
