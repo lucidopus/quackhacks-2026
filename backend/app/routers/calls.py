@@ -112,9 +112,17 @@ async def get_call_insights(call_id: str):
             insights["call_started_at"] = call.data.get("started_at")
             insights["call_ended_at"] = call.data.get("ended_at")
             
-            # Fetch transcript segment count
-            seg_count = supabase.table("transcript_segments").select("id", count="exact").eq("call_id", call_id).execute()
-            insights["transcript_segments"] = seg_count.count or 0
+            # Fetch transcript segments
+            segments = (
+                supabase.table("transcript_segments")
+                .select("*")
+                .eq("call_id", call_id)
+                .eq("is_final", True)
+                .order("created_at", desc=False)
+                .execute()
+            )
+            insights["transcript_segments_data"] = segments.data
+            insights["transcript_segments"] = len(segments.data)
 
             # Fetch client info
             client = supabase.table("clients").select("name, company, role").eq("id", call.data["client_id"]).single().execute()

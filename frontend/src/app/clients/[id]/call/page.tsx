@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useAudioPipeline } from "@/hooks/useAudioPipeline";
 import { LiveTranscript } from "@/components/LiveTranscript";
@@ -105,52 +106,49 @@ export default function CallPage({ params }: CallPageProps) {
     <div className="h-screen bg-background text-foreground flex flex-col overflow-hidden">
       <div className="fixed inset-0 grid-background pointer-events-none" />
 
-      {/* Header */}
-      <header className="relative z-10 border-b border-border-subtle bg-background/70 backdrop-blur-2xl">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+      {/* Main content */}
+      <div className="relative z-10 flex-1 flex flex-col max-w-7xl mx-auto w-full px-6 pt-10 pb-6 min-h-0 overflow-hidden">
+        {/* Simplified Header for Call Page */}
+        <div className="flex items-end justify-between mb-8">
           <div className="flex items-center gap-4">
-            <a
-              href="/clients"
-              className="text-text-muted hover:text-text-primary transition-colors"
-            >
+            <Link href="/clients" className="text-text-muted hover:text-text-primary transition-colors">
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
               </svg>
-            </a>
+            </Link>
             <div>
-              <h1 className="text-lg font-semibold">
+              <h1 className="text-xl font-bold tracking-tight">
                 {clientInfo ? `Call with ${clientInfo.name}` : "Live Call"}
               </h1>
-              <p className="text-sm text-text-muted">
-                {clientInfo ? `${clientInfo.company} · ${clientInfo.role}` : "Loading..."}
+              <p className="text-sm text-text-muted font-medium">
+                {clientInfo ? `${clientInfo.company} · ${clientInfo.role}` : "Initialing system..."}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            {effectiveCallStatus === "active" && (
-              <>
-                <div className="w-2 h-2 rounded-full bg-status-danger-light animate-pulse" />
-                <span className="text-xs text-text-faint">Recording</span>
-                <span className="text-xs text-text-faint font-mono ml-2">
-                  {formatDuration(duration)}
-                </span>
-              </>
-            )}
-            {effectiveCallStatus === "ended" && (
-              <>
-                <div className="w-2 h-2 rounded-full bg-text-faint" />
-                <span className="text-xs text-text-faint">
-                  Ended · {formatDuration(duration)}
-                </span>
-              </>
-            )}
+          <div className="flex flex-col items-end gap-2">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface-elevated/50 border border-border-subtle">
+              {effectiveCallStatus === "active" ? (
+                <>
+                  <div className="w-2 h-2 rounded-full bg-status-danger-light animate-pulse" />
+                  <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">Live Recording</span>
+                  <div className="w-px h-3 bg-border-subtle mx-1" />
+                  <span className="text-xs font-mono font-bold text-text-primary">
+                    {formatDuration(duration)}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <div className="w-2 h-2 rounded-full bg-text-faint" />
+                  <span className="text-[10px] font-bold text-text-faint uppercase tracking-widest">
+                    Ended · {formatDuration(duration)}
+                  </span>
+                </>
+              )}
+            </div>
           </div>
         </div>
-      </header>
 
-      {/* Main content */}
-      <div className="relative z-10 flex-1 flex flex-col max-w-7xl mx-auto w-full px-6 py-6 min-h-0 overflow-hidden">
         <div className="flex-1 grid grid-cols-1 lg:grid-cols-5 gap-6 min-h-0 overflow-hidden">
           {/* Transcript Panel */}
           <div className="lg:col-span-3 rounded-2xl border border-border-subtle bg-surface/50 backdrop-blur-sm flex flex-col overflow-hidden">

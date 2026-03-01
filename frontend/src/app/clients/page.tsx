@@ -64,29 +64,79 @@ export default async function ClientsPage() {
   const clients = await getClients();
   const callMap = await getLatestCalls(clients.map(c => c.id));
 
+  // Group clients by meeting_date
+  const groupedClients: Record<string, Client[]> = {};
+  clients.forEach(client => {
+    if (!groupedClients[client.meeting_date]) {
+      groupedClients[client.meeting_date] = [];
+    }
+    groupedClients[client.meeting_date].push(client);
+  });
+
+  const formatDateHeader = (dateStr: string) => {
+    const date = new Date(dateStr + 'T00:00:00');
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    if (date.getTime() === today.getTime()) return "Today";
+    
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+    if (date.getTime() === tomorrow.getTime()) return "Tomorrow";
+
+    return date.toLocaleDateString('en-US', { 
+      weekday: 'long', 
+      month: 'long', 
+      day: 'numeric' 
+    });
+  };
+
+  const sortedDates = Object.keys(groupedClients).sort();
+  const todayStr = new Date().toISOString().split('T')[0];
+
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <h2 className="text-2xl font-bold tracking-tight">Upcoming Meetings</h2>
-        <div className="text-sm text-text-muted font-medium">
-          Showing {clients.length} scheduled client{clients.length !== 1 ? 's' : ''}
-        </div>
+    <div className="max-w-4xl mx-auto space-y-10 pb-20">
+      <div className="flex flex-col gap-1">
+        <h2 className="text-3xl font-extrabold tracking-tight text-text-primary">Upcoming Meetings</h2>
+        <p className="text-sm text-text-muted font-medium">
+          You have {clients.length} scheduled client{clients.length !== 1 ? 's' : ''} this week
+        </p>
       </div>
 
       {clients.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border-strong p-16 text-center text-text-muted bg-surface/50 backdrop-blur-sm">
-          <Calendar className="w-12 h-12 mx-auto text-text-faint mb-4 opacity-50" />
-          <h3 className="text-lg font-semibold text-foreground mb-2">No upcoming meetings</h3>
-          <p className="max-w-md mx-auto">You don&apos;t have any client meetings scheduled or the database is unreachable.</p>
+        <div className="rounded-3xl border border-dashed border-border-strong p-20 text-center bg-surface/30 backdrop-blur-xl shadow-inner">
+          <Calendar className="w-16 h-16 mx-auto text-text-faint mb-6 opacity-30" />
+          <h3 className="text-xl font-bold text-text-primary mb-2">Clear Schedule</h3>
+          <p className="max-w-xs mx-auto text-text-muted text-sm leading-relaxed">
+            No upcoming meetings found. New bookings will automatically appear here.
+          </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {clients.map((client) => (
-            <ClientCard 
-              key={client.id} 
-              client={client} 
-              latestCall={callMap[client.id] || null}
-            />
+        <div className="space-y-12">
+          {sortedDates.map((date) => (
+            <section key={date} className="relative">
+              {/* Sticky Date Header */}
+              <div className="sticky top-20 z-20 py-3 mb-4 -mx-4 px-4 bg-background/80 backdrop-blur-md flex items-center justify-between border-b border-border-subtle/50">
+                <h3 className="text-sm font-bold uppercase tracking-[0.2em] text-brand-primary-light">
+                  {formatDateHeader(date)}
+                </h3>
+                <span className="text-[10px] font-bold text-text-faint tracking-widest uppercase">
+                  {groupedClients[date].length} {groupedClients[date].length === 1 ? 'Meeting' : 'Meetings'}
+                </span>
+              </div>
+
+              {/* List of Client Cards */}
+              <div className="space-y-4">
+                {groupedClients[date].map((client) => (
+                  <ClientCard 
+                    key={client.id} 
+                    client={client} 
+                    latestCall={callMap[client.id] || null}
+                    isToday={client.meeting_date === todayStr}
+                  />
+                ))}
+              </div>
+            </section>
           ))}
         </div>
       )}
