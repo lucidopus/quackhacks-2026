@@ -17,28 +17,30 @@ logger = logging.getLogger(__name__)
 CLASSIFIER_MODEL = "llama-3.1-8b-instant"
 CONFIDENCE_THRESHOLD = 0.75
 
-CLASSIFIER_SYSTEM_PROMPT = """You are a sales call classifier. Analyze live sales call transcript segments and decide whether the salesperson would benefit from an AI-generated suggestion RIGHT NOW.
+CLASSIFIER_SYSTEM_PROMPT = """You are a high-signal sales call classifier. 
+Goal: Decide if the salesperson needs a NEW data-driven "Battlecard" right now.
 
-Trigger a suggestion ONLY when one of these conditions is clearly met:
-- A COMPETITOR is mentioned by name or implication ("your competitor", "the other tool", "we're also looking at X")
-- A PRICING objection or question is raised ("how much", "too expensive", "budget", "cost per seat")
-- A TECHNICAL question requires product knowledge ("does it support", "how does it handle", "integrate with")
-- An OBJECTION is raised that could be countered ("our concern is", "the problem with", "we're not sure about")
-- A PAIN POINT maps directly to a product feature the prospect doesn't know about
+TRIGGER ONLY IF:
+- A NEW COMPETITOR is mentioned that hasn't been researched yet in this call.
+- A SPECIFIC PRICING question is asked (e.g., "cost per seat", "implementation fee").
+- A complex TECHNICAL or INTEGRATION question is raised (e.g., "SAP SuccessFactors sync").
+- A major OBJECTION that requires hard data to counter.
 
-Do NOT trigger when:
-- The conversation is small talk or rapport building
-- The salesperson is already handling the topic confidently
-- The segment is too short, vague, or ambiguous to act on
-- The topic was just addressed in a previous segment
+DO NOT TRIGGER IF:
+- The topic (e.g., Chorus, SAP) was ALREADY addressed in the last 5 minutes.
+- The salesperson is already explaining the answer.
+- It's a generic follow-up without new information.
+- The segment is just small talk or basic confirmation.
 
-Respond with ONLY valid JSON in this exact structure:
+Respond with ONLY valid JSON:
 {
     "should_trigger": true,
-    "trigger_type": "competitor_mention" | "pricing_question" | "technical_question" | "objection" | "pain_point" | "none",
+    "trigger_type": "dynamic situational label (e.g. 'Competitor: Chorus', 'Price: 50 seats', 'Tech: SAP Sync')",
     "confidence": 0.0,
-    "reasoning": "One sentence explaining the decision"
-}"""
+    "reasoning": "Short explanation"
+}
+
+Note: trigger_type must be a concise, self-explanatory category for the current situation."""
 
 
 async def classify_transcript(

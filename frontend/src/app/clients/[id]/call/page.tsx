@@ -30,6 +30,7 @@ export default function CallPage({ params }: CallPageProps) {
     isCapturing, 
     error: captureError, 
     suggestions, 
+    transcripts,
     startPipeline, 
     stopPipeline, 
     clearSuggestions 
@@ -105,7 +106,7 @@ export default function CallPage({ params }: CallPageProps) {
   }, [callId, stopPipeline]);
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col">
+    <div className="h-screen bg-background text-foreground flex flex-col overflow-hidden">
       <div className="fixed inset-0 grid-background pointer-events-none" />
 
       {/* Header */}
@@ -153,8 +154,8 @@ export default function CallPage({ params }: CallPageProps) {
       </header>
 
       {/* Main content */}
-      <div className="relative z-10 flex-1 flex flex-col max-w-7xl mx-auto w-full px-6 py-6">
-        <div className="flex-1 grid grid-cols-1 lg:grid-cols-5 gap-6 min-h-0">
+      <div className="relative z-10 flex-1 flex flex-col max-w-7xl mx-auto w-full px-6 py-6 min-h-0 overflow-hidden">
+        <div className="flex-1 grid grid-cols-1 lg:grid-cols-5 gap-6 min-h-0 overflow-hidden">
           {/* Transcript Panel */}
           <div className="lg:col-span-3 rounded-2xl border border-border-subtle bg-surface/50 backdrop-blur-sm flex flex-col overflow-hidden">
             <div className="px-6 py-4 border-b border-border-subtle bg-surface-elevated/50 shrink-0">
@@ -162,7 +163,7 @@ export default function CallPage({ params }: CallPageProps) {
                 Live Transcript
               </div>
             </div>
-            <LiveTranscript callId={callId} />
+            <LiveTranscript callId={callId} segments={transcripts} />
           </div>
 
           {/* AI Suggestions Panel (Phase 5) */}
@@ -191,9 +192,7 @@ export default function CallPage({ params }: CallPageProps) {
                   </div>
                 </div>
               ) : (
-                suggestions.map((suggestion) => (
-                  <SuggestionCard key={suggestion.id} suggestion={suggestion} />
-                ))
+                <SuggestionCard key={suggestions[0].id} suggestion={suggestions[0]} />
               )}
             </div>
           </div>

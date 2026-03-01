@@ -17,19 +17,23 @@ logger = logging.getLogger(__name__)
 
 SUGGESTION_MODEL = "llama-3.1-8b-instant"  # Highly stable and fast for tool use
 
-SYSTEM_PROMPT = """You are an expert Sales Co-Pilot for ADP. Your goal is to provide real-time, high-value suggestions to a salesperson during a live call.
+SYSTEM_PROMPT = """You are a high-speed Sales Co-Pilot for ADP. 
+Goal: Provide concise, "glanceable" Battlecards that a salesperson can read and understand in seconds during a live call.
 
-When a trigger (competitor mention, pricing question, technical objection) is detected, you will:
-1. Use your available tools to gather facts (competitor pricing, ADP product specs, client research).
-2. Synthesize a concise, "glanceable" suggestion for the salesperson.
+CRITICAL RULES:
+- FOCUS ON THE LATEST MESSAGE: The most recent segment (marked >>>) is the PRIMARY context. Earlier messages are background only.
+- DO NOT repeat information from previous suggestions. Each Battlecard must offer NEW, actionable intel.
+- Use short, actionable sentences. Avoid long paragraphs or conversational filler.
+- FORMAT: Use a single bulleted list of hard facts and rebuttals.
+- STYLE: Use **bolding** for critical numbers, percentages, and status keywords.
+- CONTENT: Focus on pricing, integrations, and specs found via tools.
+- BREVITY: Max 3-4 bullet points. Total length ~50-75 words.
+- DATA: Always include specific numbers or feature names (e.g., "**$1,200/seat**", "**SAP Sync**").
 
-SUGGESTION GUIDELINES:
-- Be extremely concise (max 2-3 bullet points).
-- Provide specific "rebuttals" or "value props" based on the facts you find.
-- Cite your sources (e.g., "From Web Search", "From Client Research").
-- Focus on ADP's strengths (TCO, integration, reliability).
-
-Tone: Professional, helpful, and strategic.
+Example Output:
+• Chorus is charging **$1,400/user**, but ADP can offer a bulk rate (approx. **15% TCO savings**) for your upcoming 50-person expansion.
+• We provide **Native SAP SuccessFactors** integration that ensures **auto-sync** of employee data across both systems.
+• Pre-call research indicates a **50-person** scale-up phase next month; emphasize ADP's scalability for payroll and HR.
 """
 
 # Tool definitions for Groq
@@ -111,8 +115,12 @@ class SuggestionAgent:
     ):
         """Root method to generate and stream a suggestion."""
         try:
-            # 1. Prepare conversation history for the agent
-            transcript_text = "\n".join([f"{s['speaker'].upper()}: {s['text']}" for s in recent_segments])
+            # 1. Prepare conversation history — mark latest segment with >>>
+            transcript_lines = []
+            for i, s in enumerate(recent_segments):
+                prefix = ">>>" if i == len(recent_segments) - 1 else "   "
+                transcript_lines.append(f"{prefix} {s['speaker'].upper()}: {s['text']}")
+            transcript_text = "\n".join(transcript_lines)
             
             messages = [
                 {"role": "system", "content": SYSTEM_PROMPT},
@@ -128,7 +136,8 @@ class SuggestionAgent:
                 messages=messages,
                 tools=TOOLS,
                 tool_choice="auto",
-                temperature=0.1
+                temperature=0.1,
+                max_tokens=150
             )
             
             response_message = response.choices[0].message
@@ -159,7 +168,8 @@ class SuggestionAgent:
                 final_response = self.client.chat.completions.create(
                     model=SUGGESTION_MODEL,
                     messages=messages,
-                    temperature=0.1
+                    temperature=0.1,
+                    max_tokens=150
                 )
                 suggestion_text = final_response.choices[0].message.content
             else:

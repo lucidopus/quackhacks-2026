@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import ReactMarkdown from "react-markdown";
 
 export interface Suggestion {
   id: string;
@@ -37,10 +38,10 @@ export function SuggestionCard({ suggestion }: SuggestionCardProps) {
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <span className={`
-              px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider
+              px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider whitespace-nowrap
               ${isThinking ? "bg-brand-primary/20 text-brand-primary" : "bg-brand-accent/20 text-brand-accent"}
             `}>
-              {suggestion.trigger_type.replace("_", " ")}
+              {suggestion.trigger_type}
             </span>
             <span className="text-[10px] text-text-faint font-mono">
               {new Date(suggestion.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
@@ -62,8 +63,13 @@ export function SuggestionCard({ suggestion }: SuggestionCardProps) {
             <div className="h-4 bg-text-faint/10 rounded w-1/2" />
           </div>
         ) : (
-          <div className="prose prose-invert prose-sm max-w-none text-text-secondary leading-relaxed whitespace-pre-wrap">
-            {suggestion.content}
+          <div className="text-[14px] text-text-secondary leading-relaxed whitespace-pre-wrap">
+            <ReactMarkdown components={{
+              p: ({...props}) => <p className="mb-2 last:mb-0" {...props} />,
+              strong: ({...props}) => <strong className="text-text-primary font-bold" {...props} />
+            }}>
+              {suggestion.content}
+            </ReactMarkdown>
           </div>
         )}
 

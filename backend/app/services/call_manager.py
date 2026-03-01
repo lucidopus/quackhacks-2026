@@ -55,6 +55,8 @@ class CallManager:
         self._client_research: dict | None = None
         self._research_fetched: bool = False
         self.suggestion_agent = SuggestionAgent(client_ws=client_ws)
+        self._triggered_topics: set[str] = set()  # Dedup: topics already triggered
+        self._last_trigger_time: float = 0.0  # Cooldown timer
 
     async def _ensure_research(self):
         """Lazy-load client research on first use."""
@@ -100,11 +102,29 @@ class CallManager:
 
             if should_trigger and confidence >= CONFIDENCE_THRESHOLD:
                 trigger_type = classification.get("trigger_type", "unknown")
-                logger.info(
-                    f"🚀 TRIGGER [{self.call_id}]: {trigger_type} "
-                    f"(confidence={confidence:.2f}) — {classification.get('reasoning', '')}"
-                )
-                asyncio.create_task(self.handle_trigger(classification))
+                
+                # Dedup: skip if we already triggered this exact topic
+                topic_key = trigger_type.lower().strip()
+                if topic_key in self._triggered_topics:
+                    logger.info(
+                        f"⏭️ Skipping duplicate trigger [{self.call_id}]: {trigger_type} (already triggered)"
+                    )
+                else:
+                    # Cooldown: at least 15 seconds between triggers
+                    import time
+                    now = time.time()
+                    if now - self._last_trigger_time < 15:
+                        logger.info(
+                            f"⏭️ Skipping trigger [{self.call_id}]: {trigger_type} (cooldown)"
+                        )
+                    else:
+                        self._triggered_topics.add(topic_key)
+                        self._last_trigger_time = now
+                        logger.info(
+                            f"🚀 TRIGGER [{self.call_id}]: {trigger_type} "
+                            f"(confidence={confidence:.2f}) — {classification.get('reasoning', '')}"
+                        )
+                        asyncio.create_task(self.handle_trigger(classification))
             else:
                 logger.debug(
                     f"No trigger (should_trigger={should_trigger}, confidence={confidence:.2f})"

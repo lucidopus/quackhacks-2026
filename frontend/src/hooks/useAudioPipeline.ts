@@ -3,10 +3,19 @@
 import { useState, useCallback, useRef } from "react";
 import { Suggestion } from "@/components/SuggestionCard";
 
+export interface TranscriptSegment {
+  id: string;
+  speaker: string;
+  text: string;
+  is_final: boolean;
+  timestamp: number;
+}
+
 interface AudioCaptureState {
   isCapturing: boolean;
   error: string | null;
   suggestions: Suggestion[];
+  transcripts: TranscriptSegment[];
 }
 
 /**
@@ -18,6 +27,7 @@ export function useAudioPipeline(callId: string, clientId: string) {
     isCapturing: false,
     error: null,
     suggestions: [],
+    transcripts: [],
   });
 
   const wsRef = useRef<WebSocket | null>(null);
@@ -35,49 +45,100 @@ export function useAudioPipeline(callId: string, clientId: string) {
       wsRef.current = ws;
 
       await new Promise<void>((resolve, reject) => {
-        ws.onopen = () => resolve();
-      ws.onerror = () => reject(new Error("WebSocket connection failed"));
-      ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          
-          if (data.type === "suggestion_trigger") {
-            // Add a new "thinking" suggestion with ID from backend
-            const newSuggestion: Suggestion = {
-              id: data.id || Math.random().toString(36).substr(2, 9),
-              type: "trigger",
-              trigger_type: data.trigger_type,
-              content: "",
-              status: "thinking",
-              timestamp: Date.now(),
-              reasoning: data.reasoning
-            };
-            setState(prev => ({
-              ...prev,
-              suggestions: [newSuggestion, ...prev.suggestions].slice(0, 5) // Keep last 5
-            }));
-          } 
-          else if (data.type === "suggestion_content") {
-            // Update the suggestion by ID
-            setState(prev => {
-              const newSuggestions = [...prev.suggestions];
-              const idx = newSuggestions.findIndex(s => s.id === data.id);
+        ws.onopen = () => {
+          console.log("WebSocket connected");
+          resolve();
+        };
+
+        ws.onerror = (err) => {
+          console.error("WebSocket error:", err);
+          setState(prev => ({ ...prev, isCapturing: false, error: "WebSocket connection failed" }));
+          reject(new Error("WebSocket connection failed"));
+        };
+        
+        ws.onclose = (event) => {
+          console.warn("WebSocket closed:", event.code, event.reason);
+          setState(prev => ({ ...prev, isCapturing: false }));
+        };
+
+        ws.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            
+            if (data.type === "suggestion_trigger") {
+              // Add a new "thinking" suggestion with ID from backend
+              const newSuggestion: Suggestion = {
+                id: data.id || Math.random().toString(36).substr(2, 9),
+                type: "trigger",
+                trigger_type: data.trigger_type,
+                content: "",
+                status: "thinking",
+                timestamp: Date.now(),
+                reasoning: data.reasoning
+              };
+              setState(prev => ({
+                ...prev,
+                suggestions: [newSuggestion, ...prev.suggestions].slice(0, 5) // Keep last 5
+              }));
+            } 
+            else if (data.type === "suggestion_content") {
+              // Update the suggestion by ID
+              setState(prev => {
+                const newSuggestions = [...prev.suggestions];
+                const idx = newSuggestions.findIndex(s => s.id === data.id);
+                
+                if (idx !== -1) {
+                  newSuggestions[idx] = {
+                    ...newSuggestions[idx],
+                    content: data.status === "error" ? data.error : data.content,
+                    status: data.status as "thinking" | "done" | "error"
+                  };
+                }
+                return { ...prev, suggestions: newSuggestions };
+              });
+            }
+            else if (data.type === "transcript") {
+              // Primary path: WebSocket-delivered transcript segments
+              const seg: TranscriptSegment = {
+                id: `ws-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+                speaker: data.speaker,
+                text: data.text,
+                is_final: data.is_final,
+                timestamp: Date.now(),
+              };
               
-              if (idx !== -1) {
-                newSuggestions[idx] = {
-                  ...newSuggestions[idx],
-                  content: data.status === "error" ? data.error : data.content,
-                  status: data.status as "thinking" | "done" | "error"
-                };
+              if (data.is_final) {
+                // Committed segment — add to the list
+                setState(prev => ({
+                  ...prev,
+                  transcripts: [...prev.transcripts, seg],
+                }));
+              } else {
+                // Partial — update or append a partial for this speaker
+                setState(prev => {
+                  const updated = [...prev.transcripts];
+                  const lastIdx = updated.length - 1;
+                  if (
+                    lastIdx >= 0 &&
+                    !updated[lastIdx].is_final &&
+                    updated[lastIdx].speaker === data.speaker
+                  ) {
+                    // Update existing partial in-place
+                    updated[lastIdx] = { ...updated[lastIdx], text: data.text };
+                  } else {
+                    updated.push(seg);
+                  }
+                  return { ...prev, transcripts: updated };
+                });
               }
-              return { ...prev, suggestions: newSuggestions };
-            });
+            }
+          } catch (err) {
+            console.error("Error parsing WS message:", err);
           }
-        } catch (err) {
-          console.error("Error parsing WS message:", err);
-        }
-      };
-      setTimeout(() => reject(new Error("WebSocket timeout")), 5000);
+        };
+
+        // Add a timeout for the connection
+        setTimeout(() => reject(new Error("WebSocket connection timed out")), 5000);
       });
 
       ws.send(JSON.stringify({ type: "start", call_id: callId }));
@@ -120,11 +181,16 @@ export function useAudioPipeline(callId: string, clientId: string) {
         "pcm-capture-processor"
       );
 
-      micProcessor.port.onmessage = (event) => {
+      micProcessor.port.onmessage = async (event) => {
         if (
           event.data.type === "pcm_chunk" &&
           ws.readyState === WebSocket.OPEN
         ) {
+          // Auto-resume if suspended
+          if (micContext.state === "suspended") {
+            await micContext.resume();
+          }
+
           const pcmBytes = new Uint8Array(event.data.pcm);
           const base64 = uint8ToBase64(pcmBytes);
           ws.send(
@@ -156,11 +222,16 @@ export function useAudioPipeline(callId: string, clientId: string) {
           "pcm-capture-processor"
         );
 
-        speakerProcessor.port.onmessage = (event) => {
+        speakerProcessor.port.onmessage = async (event) => {
           if (
             event.data.type === "pcm_chunk" &&
             ws.readyState === WebSocket.OPEN
           ) {
+            // Auto-resume if suspended (browser power-saving/bg tab)
+            if (speakerContext.state === "suspended") {
+              await speakerContext.resume();
+            }
+
             const pcmBytes = new Uint8Array(event.data.pcm);
             const base64 = uint8ToBase64(pcmBytes);
             ws.send(
