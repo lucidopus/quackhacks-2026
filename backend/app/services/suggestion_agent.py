@@ -114,6 +114,8 @@ class SuggestionAgent:
         classification: Dict[str, Any]
     ):
         """Root method to generate and stream a suggestion."""
+        import time
+        t0 = time.time()
         try:
             # 1. Prepare conversation history — mark latest segment with >>>
             transcript_lines = []
@@ -131,6 +133,7 @@ class SuggestionAgent:
             ]
 
             # 2. First LLM pass: Decide if tools are needed
+            t1 = time.time()
             response = self.client.chat.completions.create(
                 model=SUGGESTION_MODEL,
                 messages=messages,
@@ -139,6 +142,8 @@ class SuggestionAgent:
                 temperature=0.1,
                 max_tokens=150
             )
+            t2 = time.time()
+            logger.info(f"⏱️ LLM Pass 1: {t2-t1:.1f}s")
             
             response_message = response.choices[0].message
             tool_calls = response_message.tool_calls
@@ -165,6 +170,8 @@ class SuggestionAgent:
                     })
 
                 # 4. Second LLM pass: Final synthesis
+                t3 = time.time()
+                logger.info(f"⏱️ Tool execution: {t3-t2:.1f}s")
                 final_response = self.client.chat.completions.create(
                     model=SUGGESTION_MODEL,
                     messages=messages,
@@ -172,8 +179,11 @@ class SuggestionAgent:
                     max_tokens=150
                 )
                 suggestion_text = final_response.choices[0].message.content
+                t4 = time.time()
+                logger.info(f"⏱️ LLM Pass 2: {t4-t3:.1f}s | Total: {t4-t0:.1f}s")
             else:
                 suggestion_text = response_message.content
+                logger.info(f"⏱️ No tools needed. Total: {time.time()-t0:.1f}s")
 
             # 5. Stream back to frontend
             if self.client_ws:

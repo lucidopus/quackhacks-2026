@@ -108,11 +108,26 @@ export function useAudioPipeline(callId: string, clientId: string) {
               };
               
               if (data.is_final) {
-                // Committed segment — add to the list
-                setState(prev => ({
-                  ...prev,
-                  transcripts: [...prev.transcripts, seg],
-                }));
+                // Committed segment — replace the last partial for this speaker
+                setState(prev => {
+                  const updated = [...prev.transcripts];
+                  // Search backwards for a partial from the same speaker to replace
+                  let replaced = false;
+                  for (let i = updated.length - 1; i >= 0; i--) {
+                    if (!updated[i].is_final && updated[i].speaker === data.speaker) {
+                      // Replace partial with final committed version
+                      updated[i] = { ...seg, id: updated[i].id };
+                      replaced = true;
+                      break;
+                    }
+                    // Stop searching if we hit a final from the same speaker
+                    if (updated[i].is_final && updated[i].speaker === data.speaker) break;
+                  }
+                  if (!replaced) {
+                    updated.push(seg);
+                  }
+                  return { ...prev, transcripts: updated };
+                });
               } else {
                 // Partial — update or append a partial for this speaker
                 setState(prev => {
