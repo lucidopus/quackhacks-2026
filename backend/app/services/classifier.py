@@ -97,7 +97,7 @@ async def classify_transcript(
     transcript_text = "\n".join(transcript_lines)
     
     # Mask PII in the generated transcript text
-    transcript_text = anonymize_text(transcript_text)
+    transcript_text, _ = anonymize_text(transcript_text)
 
     # Build context block
     context_block = ""

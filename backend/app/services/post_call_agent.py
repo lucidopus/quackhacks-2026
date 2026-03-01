@@ -18,7 +18,7 @@ from google.genai import types
 
 from app.config import settings
 from app.database import get_supabase
-from app.services.pii_masking import anonymize_text
+from app.services.pii_masking import anonymize_text, deanonymize_text
 
 logger = logging.getLogger(__name__)
 
@@ -101,8 +101,8 @@ async def generate_insights(call_id: str, client_id: str) -> dict:
             f"[{seg['speaker'].upper()}]: {seg['text']}"
             for seg in segments.data
         )
-        # Mask PII in the generated transcript text
-        transcript_text = anonymize_text(transcript_text)
+        # Mask PII in the generated transcript text, trapping the mapping for later
+        transcript_text, pii_mapping = anonymize_text(transcript_text)
         logger.info(f"📊 Transcript: {len(segments.data)} segments, {len(transcript_text)} chars")
         
         # 3. Fetch team members
@@ -171,7 +171,13 @@ Generate a comprehensive analysis with summary, action items, improvement sugges
             
         fc = response.function_calls[0]
         # fc.args is a dictionary mapping to the function arguments
-        result = dict(fc.args)
+        raw_result_dict = dict(fc.args)
+        
+        # Reverse the PII masking on the resulting strings
+        # Easiest way to do deep reversal across arbitrary nested structs is string replace on JSON representation
+        raw_result_json = json.dumps(raw_result_dict)
+        deanonymized_json = deanonymize_text(raw_result_json, pii_mapping)
+        result = json.loads(deanonymized_json)
         
         # 6. Enrich follow_ups with team member IDs
         if team.data:

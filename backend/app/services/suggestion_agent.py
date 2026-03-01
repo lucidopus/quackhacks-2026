@@ -245,7 +245,7 @@ class SuggestionAgent:
             transcript_text = "\n".join(transcript_lines)
             
             # Mask PII in the transcript text
-            transcript_text = anonymize_text(transcript_text)
+            transcript_text, _ = anonymize_text(transcript_text)
             
             messages = [
                 {"role": "system", "content": system_prompt},
