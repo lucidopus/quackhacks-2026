@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { useAudioPipeline } from "@/hooks/useAudioPipeline";
 import { LiveTranscript } from "@/components/LiveTranscript";
+import { SuggestionCard } from "@/components/SuggestionCard";
 import { use } from "react";
 
 interface CallPageProps {
@@ -24,9 +25,15 @@ export default function CallPage({ params }: CallPageProps) {
     company: string;
     role: string;
   } | null>(null);
-
-  const { isCapturing, error: captureError, startPipeline, stopPipeline } =
-    useAudioPipeline(callId, clientId);
+  
+  const { 
+    isCapturing, 
+    error: captureError, 
+    suggestions, 
+    startPipeline, 
+    stopPipeline, 
+    clearSuggestions 
+  } = useAudioPipeline(callId, clientId);
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -160,19 +167,34 @@ export default function CallPage({ params }: CallPageProps) {
 
           {/* AI Suggestions Panel (Phase 5) */}
           <div className="lg:col-span-2 rounded-2xl border border-border-subtle bg-surface/50 backdrop-blur-sm flex flex-col overflow-hidden">
-            <div className="px-6 py-4 border-b border-border-subtle bg-surface-elevated/50 shrink-0">
+            <div className="px-6 py-4 border-b border-border-subtle bg-surface-elevated/50 shrink-0 flex items-center justify-between">
               <div className="text-[10px] font-semibold text-text-faint uppercase tracking-[0.15em]">
                 AI Suggestions
               </div>
+              {suggestions.length > 0 && (
+                <button 
+                  onClick={clearSuggestions}
+                  className="text-[10px] text-brand-primary hover:text-brand-accent transition-colors font-medium"
+                >
+                  Clear All
+                </button>
+              )}
             </div>
-            <div className="flex-1 flex items-center justify-center p-6">
-              <div className="text-center text-text-faint">
-                <svg className="w-10 h-10 mx-auto mb-3 opacity-20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
-                </svg>
-                <p className="text-sm">Suggestions will appear here during the call</p>
-                <p className="text-xs mt-1 opacity-60">Coming in Phase 5</p>
-              </div>
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
+              {suggestions.length === 0 ? (
+                <div className="h-full flex items-center justify-center p-6 grayscale opacity-50">
+                  <div className="text-center text-text-faint">
+                    <svg className="w-10 h-10 mx-auto mb-3 opacity-20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                    </svg>
+                    <p className="text-sm">Suggestions will appear here during the call</p>
+                  </div>
+                </div>
+              ) : (
+                suggestions.map((suggestion) => (
+                  <SuggestionCard key={suggestion.id} suggestion={suggestion} />
+                ))
+              )}
             </div>
           </div>
         </div>

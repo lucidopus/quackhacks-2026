@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
+import { Suggestion } from "@/components/SuggestionCard";
 
 interface AudioCaptureState {
   isCapturing: boolean;
   error: string | null;
+  suggestions: Suggestion[];
 }
 
 /**
@@ -15,6 +17,7 @@ export function useAudioPipeline(callId: string, clientId: string) {
   const [state, setState] = useState<AudioCaptureState>({
     isCapturing: false,
     error: null,
+    suggestions: [],
   });
 
   const wsRef = useRef<WebSocket | null>(null);
@@ -25,7 +28,7 @@ export function useAudioPipeline(callId: string, clientId: string) {
 
   const startPipeline = useCallback(async () => {
     try {
-      setState({ isCapturing: false, error: null });
+      setState(prev => ({ ...prev, isCapturing: false, error: null, suggestions: [] }));
 
       // 1. Open WebSocket to backend
       const ws = new WebSocket(`ws://localhost:8000/ws/call/${callId}?client_id=${clientId}`);
@@ -33,8 +36,48 @@ export function useAudioPipeline(callId: string, clientId: string) {
 
       await new Promise<void>((resolve, reject) => {
         ws.onopen = () => resolve();
-        ws.onerror = () => reject(new Error("WebSocket connection failed"));
-        setTimeout(() => reject(new Error("WebSocket timeout")), 5000);
+      ws.onerror = () => reject(new Error("WebSocket connection failed"));
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          
+          if (data.type === "suggestion_trigger") {
+            // Add a new "thinking" suggestion
+            const newSuggestion: Suggestion = {
+              id: Math.random().toString(36).substr(2, 9),
+              type: "trigger",
+              trigger_type: data.trigger_type,
+              content: "",
+              status: "thinking",
+              timestamp: Date.now(),
+              reasoning: data.reasoning
+            };
+            setState(prev => ({
+              ...prev,
+              suggestions: [newSuggestion, ...prev.suggestions].slice(0, 5) // Keep last 5
+            }));
+          } 
+          else if (data.type === "suggestion_content") {
+            // Update the most recent thinking suggestion of this type
+            setState(prev => {
+              const newSuggestions = [...prev.suggestions];
+              const idx = newSuggestions.findIndex(s => s.status === "thinking" && s.trigger_type === data.trigger_type);
+              
+              if (idx !== -1) {
+                newSuggestions[idx] = {
+                  ...newSuggestions[idx],
+                  content: data.content,
+                  status: data.status === "done" ? "done" : "error"
+                };
+              }
+              return { ...prev, suggestions: newSuggestions };
+            });
+          }
+        } catch (err) {
+          console.error("Error parsing WS message:", err);
+        }
+      };
+      setTimeout(() => reject(new Error("WebSocket timeout")), 5000);
       });
 
       ws.send(JSON.stringify({ type: "start", call_id: callId }));
@@ -135,14 +178,14 @@ export function useAudioPipeline(callId: string, clientId: string) {
         speakerProcessor.connect(speakerContext.destination);
       }
 
-      setState({ isCapturing: true, error: null });
+      setState(prev => ({ ...prev, isCapturing: true, error: null }));
     } catch (err: unknown) {
       const message =
         err instanceof Error ? err.message : "Failed to start audio pipeline";
       console.error("Audio pipeline error:", err);
-      setState({ isCapturing: false, error: message });
+      setState(prev => ({ ...prev, isCapturing: false, error: message }));
     }
-  }, [callId]);
+  }, [callId, clientId]);
 
   const stopPipeline = useCallback(() => {
     // Stop streams
@@ -164,13 +207,18 @@ export function useAudioPipeline(callId: string, clientId: string) {
     }
     wsRef.current = null;
 
-    setState({ isCapturing: false, error: null });
+    setState(prev => ({ ...prev, isCapturing: false, error: null }));
+  }, []);
+
+  const clearSuggestions = useCallback(() => {
+    setState(prev => ({ ...prev, suggestions: [] }));
   }, []);
 
   return {
     ...state,
     startPipeline,
     stopPipeline,
+    clearSuggestions,
     wsRef,
   };
 }

@@ -12,6 +12,7 @@ import logging
 from fastapi import WebSocket
 
 from app.services.classifier import classify_transcript, CONFIDENCE_THRESHOLD
+from app.services.suggestion_agent import SuggestionAgent
 from app.database import get_supabase
 
 logger = logging.getLogger(__name__)
@@ -53,6 +54,7 @@ class CallManager:
         self.is_processing: bool = False  # Prevent concurrent classifier runs
         self._client_research: dict | None = None
         self._research_fetched: bool = False
+        self.suggestion_agent = SuggestionAgent(client_ws=client_ws)
 
     async def _ensure_research(self):
         """Lazy-load client research on first use."""
@@ -139,11 +141,11 @@ class CallManager:
             except Exception as e:
                 logger.error(f"Failed to send trigger to frontend: {e}")
 
-        # Phase 5 hook: suggestion agent will be called here
-        # await suggestion_agent.generate(
-        #     call_id=self.call_id,
-        #     client_id=self.client_id,
-        #     trigger_type=trigger_type,
-        #     recent_segments=self.recent_segments,
-        #     classification=classification,
-        # )
+        # Phase 5: Active Suggestion Generation
+        asyncio.create_task(self.suggestion_agent.generate(
+            call_id=self.call_id,
+            client_id=self.client_id,
+            trigger_type=trigger_type,
+            recent_segments=self.recent_segments,
+            classification=classification
+        ))
