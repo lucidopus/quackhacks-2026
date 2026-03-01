@@ -14,6 +14,11 @@ if not supabase_url or not supabase_key:
 
 supabase: Client = create_client(supabase_url, supabase_key)
 
+from datetime import datetime, timedelta
+
+def get_relative_date(days_offset):
+    return (datetime.now() + timedelta(days=days_offset)).strftime("%Y-%m-%d")
+
 clients = [
     {
         "name": "Sarah Chen",
@@ -21,7 +26,7 @@ clients = [
         "role": "VP of Engineering",
         "email": "sarah.chen@techflow.com",
         "phone": "+1-555-0101",
-        "meeting_date": "2026-03-05",
+        "meeting_date": get_relative_date(0),
         "meeting_time": "14:30:00",
         "meeting_link": "https://meet.google.com/abc-defg-hij",
         "profile_data": {"source": "outreach_ai", "qualified": True, "interest_level": "high"}
@@ -32,7 +37,7 @@ clients = [
         "role": "CTO",
         "email": "m.rodriguez@datavault.io",
         "phone": "+1-555-0102",
-        "meeting_date": "2026-03-05",
+        "meeting_date": get_relative_date(0),
         "meeting_time": "16:00:00",
         "meeting_link": "https://meet.google.com/klm-nopq-rst",
         "profile_data": {"source": "outreach_ai", "qualified": True, "interest_level": "medium"}
@@ -43,7 +48,7 @@ clients = [
         "role": "Head of Product",
         "email": "priya@cloudscale.co",
         "phone": "+1-555-0103",
-        "meeting_date": "2026-03-06",
+        "meeting_date": get_relative_date(1),
         "meeting_time": "10:00:00",
         "meeting_link": "https://meet.google.com/uvw-xyz-123",
         "profile_data": {"source": "outreach_ai", "qualified": True, "interest_level": "high"}
@@ -54,7 +59,7 @@ clients = [
         "role": "Director of Operations",
         "email": "jobrien@finedge.com",
         "phone": "+1-555-0104",
-        "meeting_date": "2026-03-07",
+        "meeting_date": get_relative_date(2),
         "meeting_time": "11:30:00",
         "meeting_link": "https://meet.google.com/456-789-abc",
         "profile_data": {"source": "outreach_ai", "qualified": True, "interest_level": "medium"}
@@ -68,7 +73,7 @@ clients.append({
     "role": "Senior Risk Manager",
     "email": "ken.krupa@chubb.com",
     "phone": "+1-555-0110",
-    "meeting_date": "2026-03-08",
+    "meeting_date": get_relative_date(3),
     "meeting_time": "09:00:00",
     "meeting_link": "https://meet.google.com/ken-krupa",
     "profile_data": {
