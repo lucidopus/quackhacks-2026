@@ -50,3 +50,40 @@ uvicorn app.main:app --reload --port 8000
 - Never do a `supabase db reset` without explicit user approval.
 - PII masking is a hard requirement — sensitive client data must never reach an LLM in raw form.
 - The upstream AI caller system is out of scope; clients are seeded/pre-populated for demo purposes.
+
+## ⚠️ MANDATORY: Programmatic Verification After Every Change
+
+**You MUST run these verification commands after ANY code change, BEFORE presenting results to the user.** Do NOT skip this step. Fix any errors before reporting success.
+
+### Frontend changes
+```bash
+cd frontend && yarn tsc --noEmit
+```
+If this fails, fix the TypeScript errors before proceeding.
+
+### Backend changes
+```bash
+cd backend && source venv/bin/activate && python -c "import app.main; print('✅ Backend OK')"
+```
+If this fails, fix the Python import/syntax errors before proceeding.
+
+### Cross-cutting changes (both frontend + backend)
+Run BOTH commands above.
+
+### After modifying `audio_relay.py` specifically
+```bash
+cd backend && source venv/bin/activate && python -c "import app.websocket.audio_relay; print('✅ audio_relay OK')"
+```
+
+### After modifying Supabase data (products, clients, etc.)
+```bash
+cd backend && source venv/bin/activate && python -c "
+from app.database import get_supabase
+sb = get_supabase()
+# Verify the table you changed — e.g.:
+result = sb.table('products').select('key, name').execute()
+print(f'✅ Products: {len(result.data)} records')
+"
+```
+
+**If any check fails, you must fix the error and re-run verification. Never tell the user "it's deployed" if verification hasn't passed.**

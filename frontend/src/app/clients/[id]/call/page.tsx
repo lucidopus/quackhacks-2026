@@ -192,7 +192,9 @@ export default function CallPage({ params }: CallPageProps) {
                   </div>
                 </div>
               ) : (
-                <SuggestionCard key={suggestions[0].id} suggestion={suggestions[0]} />
+                suggestions.map((suggestion, idx) => (
+                  <SuggestionCard key={suggestion.id} suggestion={suggestion} isLatest={idx === 0} />
+                ))
               )}
             </div>
           </div>

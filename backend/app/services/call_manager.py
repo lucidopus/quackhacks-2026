@@ -95,6 +95,7 @@ class CallManager:
             classification = await classify_transcript(
                 recent_segments=self.recent_segments,
                 client_context=self._client_research,
+                already_triggered=self._triggered_topics,
             )
 
             should_trigger = classification.get("should_trigger", False)

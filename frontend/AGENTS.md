@@ -40,3 +40,13 @@ npm run lint     # eslint
 - Live call UI — real-time transcript display, suggestion overlay
 - Audio capture via Web Media APIs (`getUserMedia` for mic, `getDisplayMedia` for speaker/tab audio)
 - WebSocket connections to backend for audio streaming and real-time transcript updates
+
+## ⚠️ MANDATORY: Verification After Every Change
+
+**You MUST run this check after ANY frontend code change, BEFORE presenting results to the user.**
+
+```bash
+cd frontend && yarn tsc --noEmit
+```
+
+**Fix all TypeScript errors before reporting success. Never say "it's deployed" if this command fails.**

@@ -15,9 +15,10 @@ export interface Suggestion {
 
 interface SuggestionCardProps {
   suggestion: Suggestion;
+  isLatest?: boolean;
 }
 
-export function SuggestionCard({ suggestion }: SuggestionCardProps) {
+export function SuggestionCard({ suggestion, isLatest = false }: SuggestionCardProps) {
   const isThinking = suggestion.status === "thinking";
 
   return (
@@ -25,12 +26,14 @@ export function SuggestionCard({ suggestion }: SuggestionCardProps) {
       relative overflow-hidden rounded-2xl border transition-all duration-300
       ${isThinking 
         ? "border-brand-primary/30 bg-brand-primary/5 animate-pulse" 
-        : "border-border-subtle bg-surface-elevated/50 hover:border-brand-primary/50"
+        : isLatest
+          ? "border-brand-primary/40 bg-surface-elevated/70 shadow-lg shadow-brand-primary/5"
+          : "border-border-subtle/50 bg-surface/30 opacity-60"
       }
-      p-5 group
+      ${isLatest ? "p-5" : "p-4"} group
     `}>
-      {/* Glow effect for new suggestions */}
-      {!isThinking && (
+      {/* Glow effect for latest suggestion */}
+      {!isThinking && isLatest && (
         <div className="absolute -inset-px bg-gradient-to-r from-brand-primary/20 to-brand-accent/20 opacity-0 group-hover:opacity-100 transition-opacity blur-sm" />
       )}
 
@@ -39,10 +42,15 @@ export function SuggestionCard({ suggestion }: SuggestionCardProps) {
           <div className="flex items-center gap-2">
             <span className={`
               px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider whitespace-nowrap
-              ${isThinking ? "bg-brand-primary/20 text-brand-primary" : "bg-brand-accent/20 text-brand-accent"}
+              ${isThinking ? "bg-brand-primary/20 text-brand-primary" : isLatest ? "bg-brand-accent/20 text-brand-accent" : "bg-text-faint/10 text-text-faint"}
             `}>
               {suggestion.trigger_type}
             </span>
+            {isLatest && !isThinking && (
+              <span className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-widest bg-status-success/15 text-status-success-light">
+                Latest
+              </span>
+            )}
             <span className="text-[10px] text-text-faint font-mono">
               {new Date(suggestion.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
             </span>
