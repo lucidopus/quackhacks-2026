@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { Clock, Building2, Briefcase, Video, Beaker } from "lucide-react";
 
 interface Client {
@@ -16,6 +17,8 @@ interface Client {
 }
 
 export function ClientCard({ client }: { client: Client }) {
+  const router = useRouter();
+
   const formatMeetingTime = (dateStr: string, timeStr: string) => {
     try {
       const date = new Date(`${dateStr}T${timeStr}`);
@@ -38,6 +41,33 @@ export function ClientCard({ client }: { client: Client }) {
   };
 
   const today = isToday(client.meeting_date);
+
+  const handleJoinMeet = async () => {
+    try {
+      // 1. Create a call record
+      const res = await fetch("http://localhost:8000/api/calls", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ client_id: client.id }),
+      });
+      const data = await res.json();
+      const callId = data.call_id;
+
+      // 2. Open Meet link in new tab (env var takes priority)
+      const meetLink =
+        process.env.NEXT_PUBLIC_GOOGLE_MEET_LINK ||
+        client.meeting_link ||
+        "";
+      if (meetLink) {
+        window.open(meetLink, "_blank");
+      }
+
+      // 3. Navigate to the live call page
+      router.push(`/clients/${client.id}/call?callId=${callId}`);
+    } catch (err) {
+      console.error("Failed to create call:", err);
+    }
+  };
 
   return (
     <div 
@@ -90,16 +120,15 @@ export function ClientCard({ client }: { client: Client }) {
           <Beaker className="w-4 h-4" />
           Research
         </button>
-        <a 
-          href={client.meeting_link || '#'}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex justify-center items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-xl border border-transparent bg-gradient-to-r from-brand-primary to-brand-accent-dark text-white hover:shadow-lg hover:shadow-brand-primary/25 active:scale-[0.97] transition-all duration-200"
+        <button 
+          onClick={handleJoinMeet}
+          className="flex justify-center items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-xl border border-transparent bg-gradient-to-r from-brand-primary to-brand-accent-dark text-white hover:shadow-lg hover:shadow-brand-primary/25 active:scale-[0.97] transition-all duration-200 cursor-pointer"
         >
           <Video className="w-4 h-4" />
           Join Meet
-        </a>
+        </button>
       </div>
     </div>
   );
 }
+

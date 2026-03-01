@@ -1,6 +1,7 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import health, clients
+from app.routers import health, clients, calls
+from app.websocket.audio_relay import handle_call_websocket
 
 app = FastAPI(title="Sales Co-Pilot Backend")
 
@@ -14,3 +15,10 @@ app.add_middleware(
 
 app.include_router(health.router)
 app.include_router(clients.router)
+app.include_router(calls.router)
+
+
+@app.websocket("/ws/call/{call_id}")
+async def call_websocket(websocket: WebSocket, call_id: str):
+    """WebSocket endpoint for live call audio streaming."""
+    await handle_call_websocket(websocket, call_id)
