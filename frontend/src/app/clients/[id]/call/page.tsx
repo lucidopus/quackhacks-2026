@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useAudioPipeline } from "@/hooks/useAudioPipeline";
 import { LiveTranscript } from "@/components/LiveTranscript";
@@ -63,7 +64,8 @@ export default function CallPage({ params }: CallPageProps) {
   // Sync isCapturing → callStatus
   useEffect(() => {
     if (isCapturing && callStatus === "listening") {
-      setCallStatus("active");
+      const id = setTimeout(() => setCallStatus("active"), 0);
+      return () => clearTimeout(id);
     }
   }, [isCapturing, callStatus]);
 
@@ -105,14 +107,14 @@ export default function CallPage({ params }: CallPageProps) {
       <header className="relative z-10 border-b border-border-subtle bg-background/70 backdrop-blur-2xl">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <a
+            <Link
               href="/clients"
               className="text-text-muted hover:text-text-primary transition-colors"
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
               </svg>
-            </a>
+            </Link>
             <div>
               <h1 className="text-lg font-semibold">
                 {clientInfo ? `Call with ${clientInfo.name}` : "Live Call"}
@@ -226,12 +228,12 @@ export default function CallPage({ params }: CallPageProps) {
                 </svg>
                 Call Ended
               </div>
-              <a
+              <Link
                 href="/clients"
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-border-strong text-text-secondary font-medium hover:text-text-primary hover:bg-surface-elevated transition-all"
               >
                 Back to Dashboard
-              </a>
+              </Link>
             </div>
           )}
         </div>

@@ -142,7 +142,7 @@ export function useAudioPipeline(callId: string, clientId: string) {
       console.error("Audio pipeline error:", err);
       setState({ isCapturing: false, error: message });
     }
-  }, [callId]);
+  }, [callId, clientId]);
 
   const stopPipeline = useCallback(() => {
     // Stop streams

@@ -9,3 +9,9 @@ httpx==0.*
 fastmcp==3.*
 tavily-python==0.*
 groq==0.*
+# Research pipeline (AWS Bedrock + Strands Agents)
+strands-agents>=0.1.0
+strands-agents-tools>=0.1.0
+boto3>=1.34.0
+botocore>=1.34.0
+duckduckgo-search>=6.2.0

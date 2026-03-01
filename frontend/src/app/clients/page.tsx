@@ -14,7 +14,14 @@ interface Client {
   meeting_date: string;
   meeting_time: string;
   meeting_link: string;
-  profile_data: any;
+  profile_data: Record<string, unknown>;
+}
+
+interface ResearchRecord {
+  id: string;
+  client_id: string;
+  status: "pending" | "in_progress" | "completed" | "failed";
+  summary_text?: string;
 }
 
 async function getClients() {
@@ -32,8 +39,23 @@ async function getClients() {
   return data as Client[];
 }
 
+async function getResearchStatuses() {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("research_summaries")
+    .select("id, client_id, status, summary_text");
+  return (data ?? []) as ResearchRecord[];
+}
+
 export default async function ClientsPage() {
-  const clients = await getClients();
+  const [clients, researchList] = await Promise.all([
+    getClients(),
+    getResearchStatuses(),
+  ]);
+
+  const researchByClient = Object.fromEntries(
+    researchList.map((r) => [r.client_id, r])
+  );
 
   return (
     <div className="space-y-6">
@@ -53,7 +75,11 @@ export default async function ClientsPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {clients.map((client) => (
-            <ClientCard key={client.id} client={client} />
+            <ClientCard
+              key={client.id}
+              client={client}
+              initialResearch={researchByClient[client.id]}
+            />
           ))}
         </div>
       )}

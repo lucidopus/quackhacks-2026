@@ -1,4 +1,5 @@
 import AnimateOnScroll from "@/components/AnimateOnScroll";
+import Link from "next/link";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default function Home() {
@@ -24,14 +25,14 @@ function Navbar() {
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border-subtle backdrop-blur-2xl bg-background/70">
       <div className="mx-auto max-w-7xl px-6 h-16 flex items-center justify-between">
-        <a href="/" className="flex items-center gap-2.5 group">
+        <Link href="/" className="flex items-center gap-2.5 group">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-primary to-brand-accent-dark flex items-center justify-center shadow-lg shadow-brand-primary/20 group-hover:shadow-brand-primary/40 transition-shadow">
             <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
             </svg>
           </div>
           <span className="font-semibold text-lg tracking-tight">Sales Co-Pilot</span>
-        </a>
+        </Link>
 
         <div className="hidden md:flex items-center gap-8">
           {["Problem", "How It Works", "Features"].map((item) => (
@@ -43,9 +44,9 @@ function Navbar() {
 
         <div className="flex items-center gap-4">
           <ThemeToggle />
-          <a href="/clients" className="px-5 py-2 rounded-lg bg-gradient-to-r from-brand-primary to-brand-accent-dark text-sm font-medium text-white hover:shadow-lg hover:shadow-brand-primary/25 active:scale-[0.97] transition-all duration-200">
+          <Link href="/clients" className="px-5 py-2 rounded-lg bg-gradient-to-r from-brand-primary to-brand-accent-dark text-sm font-medium text-white hover:shadow-lg hover:shadow-brand-primary/25 active:scale-[0.97] transition-all duration-200">
             Launch App
-          </a>
+          </Link>
         </div>
       </div>
     </nav>
@@ -76,12 +77,12 @@ function Hero() {
           </p>
 
           <div className="flex flex-wrap gap-4">
-            <a href="/clients" className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl bg-gradient-to-r from-brand-primary to-brand-accent-dark font-semibold text-white hover:shadow-xl hover:shadow-brand-primary/25 active:scale-[0.97] transition-all duration-200">
+            <Link href="/clients" className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl bg-gradient-to-r from-brand-primary to-brand-accent-dark font-semibold text-white hover:shadow-xl hover:shadow-brand-primary/25 active:scale-[0.97] transition-all duration-200">
               Get Started
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
               </svg>
-            </a>
+            </Link>
             <a href="#how-it-works" className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl border border-border-strong text-text-secondary font-medium hover:border-text-secondary hover:text-text-primary hover:bg-surface-elevated active:scale-[0.97] transition-all duration-200">
               See How It Works
             </a>
@@ -347,12 +348,12 @@ function CallToAction() {
               <p className="text-lg text-text-muted max-w-xl mx-auto mb-10">
                 Stop choosing between being present and being informed. Let AI handle the research, the real-time intelligence, and the follow-ups.
               </p>
-              <a href="/clients" className="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-gradient-to-r from-brand-primary to-brand-accent-dark text-lg font-semibold text-white hover:shadow-xl hover:shadow-brand-primary/25 active:scale-[0.97] transition-all duration-200">
+              <Link href="/clients" className="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-gradient-to-r from-brand-primary to-brand-accent-dark text-lg font-semibold text-white hover:shadow-xl hover:shadow-brand-primary/25 active:scale-[0.97] transition-all duration-200">
                 Get Started Now
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
                 </svg>
-              </a>
+              </Link>
             </div>
           </div>
         </AnimateOnScroll>

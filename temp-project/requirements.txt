@@ -1,0 +1,26 @@
+# Core Bedrock AgentCore runtime
+bedrock-agentcore>=0.1.0
+bedrock-agentcore-starter-toolkit>=0.1.0
+
+# Strands Agents Framework
+strands-agents>=0.1.0
+strands-agents-tools>=0.1.0
+
+# Amazon Bedrock & AWS SDK
+boto3>=1.34.0
+botocore>=1.34.0
+
+# Web search (DuckDuckGo — no API key required)
+duckduckgo-search>=6.2.0
+
+# Web fetching & scraping
+httpx>=0.27.0
+requests>=2.31.0
+
+# FastAPI server
+fastapi>=0.111.0
+uvicorn[standard]>=0.30.0
+
+# Utility
+pydantic>=2.7.0
+python-dotenv>=1.0.1

@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Clock, Building2, Briefcase, Video, Beaker } from "lucide-react";
+import { Clock, Building2, Briefcase, Video, Beaker, Loader2, CheckCircle2, FlaskConical } from "lucide-react";
+import { ResearchModal } from "@/components/ResearchModal";
 
 interface Client {
   id: string;
@@ -13,11 +15,32 @@ interface Client {
   meeting_date: string;
   meeting_time: string;
   meeting_link: string;
-  profile_data: any;
+  profile_data: Record<string, unknown>;
 }
 
-export function ClientCard({ client }: { client: Client }) {
+interface ResearchRecord {
+  id: string;
+  status: "pending" | "in_progress" | "completed" | "failed";
+  summary_text?: string;
+  company_data?: Record<string, unknown>;
+  news_data?: Record<string, unknown>;
+  competitor_data?: Record<string, unknown>;
+  linkedin_data?: Record<string, unknown>;
+  raw_research?: Record<string, unknown>;
+}
+
+export function ClientCard({
+  client,
+  initialResearch,
+}: {
+  client: Client;
+  initialResearch?: ResearchRecord;
+}) {
   const router = useRouter();
+  const [researchStatus, setResearchStatus] = useState<string>(
+    initialResearch?.status ?? "not_started"
+  );
+  const [modalOpen, setModalOpen] = useState(false);
 
   const formatMeetingTime = (dateStr: string, timeStr: string) => {
     try {
@@ -41,6 +64,21 @@ export function ClientCard({ client }: { client: Client }) {
   };
 
   const today = isToday(client.meeting_date);
+
+  const handleResearchClick = () => {
+    if (researchStatus === "not_started" || researchStatus === "failed") {
+      setResearchStatus("in_progress");
+    }
+    setModalOpen(true);
+  };
+
+  const handleModalClose = () => {
+    setModalOpen(false);
+    fetch(`http://localhost:8000/api/research/${client.id}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((r) => { if (r?.status) setResearchStatus(r.status); })
+      .catch(() => {});
+  };
 
   const handleJoinMeet = async () => {
     try {
@@ -70,6 +108,7 @@ export function ClientCard({ client }: { client: Client }) {
   };
 
   return (
+    <>
     <div 
       className={`group flex flex-col rounded-2xl border bg-surface/50 backdrop-blur-sm card-hover transition-all ${
         today 
@@ -83,9 +122,21 @@ export function ClientCard({ client }: { client: Client }) {
           <Clock className="w-4 h-4" />
           {formatMeetingTime(client.meeting_date, client.meeting_time)}
         </div>
-        <span className="inline-flex items-center rounded-full bg-surface-elevated px-2.5 py-1 text-xs font-medium text-text-faint border border-border-subtle">
-          Not Started
-        </span>
+        {researchStatus === "completed" ? (
+          <span className="inline-flex items-center gap-1 rounded-full bg-green-500/10 px-2.5 py-1 text-xs font-medium text-green-400 border border-green-500/20">
+            <CheckCircle2 className="w-3 h-3" />
+            Researched
+          </span>
+        ) : researchStatus === "in_progress" || researchStatus === "pending" ? (
+          <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-400 border border-amber-500/20">
+            <Loader2 className="w-3 h-3 animate-spin" />
+            Researching
+          </span>
+        ) : (
+          <span className="inline-flex items-center rounded-full bg-surface-elevated px-2.5 py-1 text-xs font-medium text-text-faint border border-border-subtle">
+            Not Started
+          </span>
+        )}
       </div>
 
       {/* Body — name, company, role */}
@@ -113,12 +164,22 @@ export function ClientCard({ client }: { client: Client }) {
 
       {/* Actions */}
       <div className="p-6 pt-0 mt-auto grid grid-cols-2 gap-3">
-        <button 
-          onClick={() => console.log('Research pipeline coming in Phase 2')}
+        <button
+          onClick={handleResearchClick}
           className="flex justify-center items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-xl border border-border-strong bg-surface-elevated text-text-secondary hover:text-foreground hover:border-text-faint transition-colors cursor-pointer"
         >
-          <Beaker className="w-4 h-4" />
-          Research
+          {researchStatus === "completed" ? (
+            <FlaskConical className="w-4 h-4 text-green-400" />
+          ) : researchStatus === "in_progress" || researchStatus === "pending" ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <Beaker className="w-4 h-4" />
+          )}
+          {researchStatus === "completed"
+            ? "View Brief"
+            : researchStatus === "in_progress" || researchStatus === "pending"
+            ? "View Progress"
+            : "Research"}
         </button>
         <button 
           onClick={handleJoinMeet}
@@ -129,6 +190,17 @@ export function ClientCard({ client }: { client: Client }) {
         </button>
       </div>
     </div>
+
+      {modalOpen && (
+        <ResearchModal
+          clientId={client.id}
+          clientName={client.name}
+          companyName={client.company || client.name}
+          initialResearch={initialResearch}
+          onClose={handleModalClose}
+        />
+      )}
+    </>
   );
 }
 
