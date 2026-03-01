@@ -15,7 +15,7 @@ from app.mcp.server import web_search, fetch_product_context, get_client_researc
 
 logger = logging.getLogger(__name__)
 
-SUGGESTION_MODEL = "llama-3.1-8b-instant"  # Highly stable and fast for tool use
+SUGGESTION_MODEL = "llama-3.3-70b-versatile"  # Higher TPM limits and context window on Groq
 
 SYSTEM_PROMPT = """You are a high-speed Sales Co-Pilot for ADP. 
 Goal: Provide concise, "glanceable" Battlecards that a salesperson can read and understand in seconds during a live call.
@@ -163,13 +163,18 @@ class SuggestionAgent:
                 tool_results = await asyncio.gather(*tool_tasks)
                 
                 for i, tool_call in enumerate(tool_calls):
-                    result_preview = tool_results[i][:200] if len(tool_results[i]) > 200 else tool_results[i]
+                    result_str = tool_results[i]
+                    # Aggressively truncate to fit within lower TPM limits (e.g., 6000 TPM)
+                    if result_str and len(result_str) > 2000:
+                        result_str = result_str[:2000] + "... [TRUNCATED DUE TO LENGTH]"
+
+                    result_preview = result_str[:200] if len(result_str) > 200 else result_str
                     logger.info(f"📥 Tool result [{tool_call.function.name}]: {result_preview}")
                     messages.append({
                         "tool_call_id": tool_call.id,
                         "role": "tool",
                         "name": tool_call.function.name,
-                        "content": tool_results[i],
+                        "content": result_str,
                     })
 
                 # 4. Second LLM pass: Final synthesis
