@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Clock, Building2, Briefcase, Video, Beaker, Loader2, CheckCircle2, FlaskConical } from "lucide-react";
+import { Building2, Briefcase, Video, BarChart3, Loader2, CheckCircle2, FlaskConical, Beaker } from "lucide-react";
 import { ResearchModal } from "@/components/ResearchModal";
 
 interface Client {
@@ -18,6 +18,11 @@ interface Client {
   profile_data: Record<string, unknown>;
 }
 
+interface CallInfo {
+  id: string;
+  status: string;
+}
+
 interface ResearchRecord {
   id: string;
   status: "pending" | "in_progress" | "completed" | "failed";
@@ -29,11 +34,15 @@ interface ResearchRecord {
   raw_research?: Record<string, unknown>;
 }
 
-export function ClientCard({
-  client,
-  initialResearch,
-}: {
-  client: Client;
+export function ClientCard({ 
+  client, 
+  latestCall, 
+  isToday,
+  initialResearch
+}: { 
+  client: Client; 
+  latestCall: CallInfo | null;
+  isToday: boolean;
   initialResearch?: ResearchRecord;
 }) {
   const router = useRouter();
@@ -42,28 +51,8 @@ export function ClientCard({
   );
   const [modalOpen, setModalOpen] = useState(false);
 
-  const formatMeetingTime = (dateStr: string, timeStr: string) => {
-    try {
-      const date = new Date(`${dateStr}T${timeStr}`);
-      return date.toLocaleString('en-US', { 
-        month: 'short', 
-        day: 'numeric', 
-        year: 'numeric', 
-        hour: 'numeric', 
-        minute: '2-digit',
-        hour12: true
-      });
-    } catch {
-      return `${dateStr} ${timeStr}`;
-    }
-  };
-
-  const isToday = (dateStr: string) => {
-    const today = new Date().toISOString().split('T')[0];
-    return dateStr === today;
-  };
-
-  const today = isToday(client.meeting_date);
+  const isCompleted = latestCall?.status === "completed";
+  const isActive = latestCall?.status === "active";
 
   const handleResearchClick = () => {
     if (researchStatus === "not_started" || researchStatus === "failed") {
@@ -74,15 +63,17 @@ export function ClientCard({
 
   const handleModalClose = () => {
     setModalOpen(false);
+    // Refresh research status
     fetch(`http://localhost:8000/api/research/${client.id}`)
       .then((r) => (r.ok ? r.json() : null))
-      .then((r) => { if (r?.status) setResearchStatus(r.status); })
+      .then((r) => {
+        if (r?.status) setResearchStatus(r.status);
+      })
       .catch(() => {});
   };
 
   const handleJoinMeet = async () => {
     try {
-      // 1. Create a call record
       const res = await fetch("http://localhost:8000/api/calls", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -91,105 +82,141 @@ export function ClientCard({
       const data = await res.json();
       const callId = data.call_id;
 
-      // 2. Open Meet link in new tab (env var takes priority)
-      const meetLink =
-        process.env.NEXT_PUBLIC_GOOGLE_MEET_LINK ||
-        client.meeting_link ||
-        "";
-      if (meetLink) {
-        window.open(meetLink, "_blank");
-      }
-
-      // 3. Navigate to the live call page
+      // Navigate to the live call page (removed automatic window.open for Meet)
       router.push(`/clients/${client.id}/call?callId=${callId}`);
     } catch (err) {
       console.error("Failed to create call:", err);
     }
   };
 
+  const statusDisplay = () => {
+    if (isCompleted) {
+      return (
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-status-success/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-status-success-light border border-status-success/20">
+          <span className="w-1 h-1 rounded-full bg-status-success" />
+          Completed
+        </span>
+      );
+    }
+    if (isActive) {
+      return (
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-primary/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-brand-primary-light border border-brand-primary/20 animate-pulse">
+          <span className="w-1.5 h-1.5 rounded-full bg-brand-primary shadow-[0_0_8px_rgba(var(--brand-primary-rgb),0.8)]" />
+          Live Now
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-elevated px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-text-faint border border-border-subtle">
+        Upcoming
+      </span>
+    );
+  };
+
+  const researchBadge = () => {
+    if (researchStatus === "completed") {
+      return (
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-status-success/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-status-success-light border border-status-success/20">
+          <CheckCircle2 className="w-3.5 h-3.5" />
+          Researched
+        </span>
+      );
+    }
+    if (researchStatus === "in_progress" || researchStatus === "pending") {
+      return (
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-primary/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-brand-primary-light border border-brand-primary/20">
+          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          Researching
+        </span>
+      );
+    }
+    return null;
+  };
+
   return (
     <>
-    <div 
-      className={`group flex flex-col rounded-2xl border bg-surface/50 backdrop-blur-sm card-hover transition-all ${
-        today 
-          ? 'border-brand-primary/50 shadow-md shadow-brand-primary/10' 
-          : 'border-border-subtle hover:border-border-strong shadow-sm'
-      }`}
-    >
-      {/* Header — time + status */}
-      <div className="px-6 py-4 border-b border-border-subtle flex items-center justify-between">
-        <div className={`flex items-center gap-2 text-sm font-medium ${today ? 'text-brand-primary-light' : 'text-text-secondary'}`}>
-          <Clock className="w-4 h-4" />
-          {formatMeetingTime(client.meeting_date, client.meeting_time)}
-        </div>
-        {researchStatus === "completed" ? (
-          <span className="inline-flex items-center gap-1 rounded-full bg-green-500/10 px-2.5 py-1 text-xs font-medium text-green-400 border border-green-500/20">
-            <CheckCircle2 className="w-3 h-3" />
-            Researched
-          </span>
-        ) : researchStatus === "in_progress" || researchStatus === "pending" ? (
-          <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-400 border border-amber-500/20">
-            <Loader2 className="w-3 h-3 animate-spin" />
-            Researching
-          </span>
-        ) : (
-          <span className="inline-flex items-center rounded-full bg-surface-elevated px-2.5 py-1 text-xs font-medium text-text-faint border border-border-subtle">
-            Not Started
-          </span>
-        )}
-      </div>
+      <div 
+        className={`group relative flex items-center justify-between p-5 rounded-2xl border bg-surface/40 backdrop-blur-sm transition-all duration-300 hover:bg-surface-elevated/60 hover:shadow-xl hover:shadow-brand-primary/5 ${
+          isCompleted
+            ? 'border-border-subtle opacity-80 hover:opacity-100'
+            : isToday 
+              ? 'border-brand-primary/30 bg-brand-primary/[0.02]' 
+              : 'border-border-subtle'
+        }`}
+      >
+        <div className="flex items-center gap-6 min-w-0 flex-1">
+          {/* Time Pillar */}
+          <div className="flex flex-col items-center justify-center w-20 shrink-0 border-r border-border-subtle pr-6">
+            <span className={`text-lg font-bold tracking-tight ${isToday ? 'text-brand-primary-light' : 'text-text-primary'}`}>
+              {client.meeting_time.split(':')[0]}:{client.meeting_time.split(':')[1]}
+            </span>
+            <span className="text-[10px] font-bold text-text-faint uppercase tracking-tighter">
+              {parseInt(client.meeting_time.split(':')[0]) >= 12 ? 'PM' : 'AM'}
+            </span>
+          </div>
 
-      {/* Body — name, company, role */}
-      <div className="p-6 flex-1 flex flex-col gap-4">
-        <div>
-          <h3 className="text-xl font-bold text-foreground mb-1 group-hover:text-brand-primary-light transition-colors duration-300">
-            {client.name}
-          </h3>
-          <div className="flex flex-col gap-2 text-text-muted text-sm mt-3">
-            {client.company && (
-              <div className="flex items-center gap-2">
-                <Building2 className="w-4 h-4 shrink-0" />
-                <span>{client.company}</span>
+          {/* Client Info */}
+          <div className="min-w-0">
+            <div className="flex items-center gap-3 mb-1">
+              <h3 className="text-base font-bold text-text-primary truncate group-hover:text-brand-primary-light transition-colors">
+                {client.name}
+              </h3>
+              {statusDisplay()}
+              {researchBadge()}
+            </div>
+            <div className="flex items-center gap-4 text-xs font-medium text-text-muted">
+              <div className="flex items-center gap-1.5">
+                <Building2 className="w-3.5 h-3.5 text-text-faint" />
+                <span className="truncate">{client.company}</span>
               </div>
-            )}
-            {client.role && (
-              <div className="flex items-center gap-2">
-                <Briefcase className="w-4 h-4 shrink-0" />
-                <span>{client.role}</span>
+              <div className="flex items-center gap-1.5">
+                <Briefcase className="w-3.5 h-3.5 text-text-faint" />
+                <span className="truncate">{client.role}</span>
               </div>
-            )}
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Actions */}
-      <div className="p-6 pt-0 mt-auto grid grid-cols-2 gap-3">
-        <button
-          onClick={handleResearchClick}
-          className="flex justify-center items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-xl border border-border-strong bg-surface-elevated text-text-secondary hover:text-foreground hover:border-text-faint transition-colors cursor-pointer"
-        >
-          {researchStatus === "completed" ? (
-            <FlaskConical className="w-4 h-4 text-green-400" />
-          ) : researchStatus === "in_progress" || researchStatus === "pending" ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
+        {/* Actions Pillar */}
+        <div className="flex items-center gap-3 pl-6 ml-4 border-l border-border-subtle">
+          {isCompleted && latestCall ? (
+            <button
+              onClick={() => router.push(`/clients/${client.id}/insights?callId=${latestCall.id}`)}
+              className="flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl bg-status-success/10 text-status-success-light border border-status-success/20 hover:bg-status-success hover:text-white transition-all duration-200 cursor-pointer"
+            >
+              <BarChart3 className="w-3.5 h-3.5" />
+              Call Insights
+            </button>
           ) : (
-            <Beaker className="w-4 h-4" />
+            <>
+              <button 
+                onClick={handleResearchClick}
+                className="flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl border border-border-strong bg-surface-elevated text-text-secondary hover:text-text-primary hover:border-text-faint transition-all cursor-pointer"
+              >
+                {researchStatus === "completed" ? (
+                  <FlaskConical className="w-3.5 h-3.5 text-status-success" />
+                ) : researchStatus === "in_progress" || researchStatus === "pending" ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Beaker className="w-3.5 h-3.5" />
+                )}
+                {researchStatus === "completed"
+                  ? "Briefing"
+                  : researchStatus === "in_progress" || researchStatus === "pending"
+                  ? "Researching"
+                  : "Research"}
+              </button>
+              <button 
+                onClick={handleJoinMeet}
+                className="flex items-center gap-2 px-5 py-2 text-xs font-bold rounded-xl bg-brand-primary text-white hover:shadow-lg hover:shadow-brand-primary/20 active:scale-95 transition-all duration-200 cursor-pointer"
+              >
+                <Video className="w-3.5 h-3.5" />
+                Start Call
+              </button>
+            </>
           )}
-          {researchStatus === "completed"
-            ? "View Brief"
-            : researchStatus === "in_progress" || researchStatus === "pending"
-            ? "View Progress"
-            : "Research"}
-        </button>
-        <button 
-          onClick={handleJoinMeet}
-          className="flex justify-center items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-xl border border-transparent bg-gradient-to-r from-brand-primary to-brand-accent-dark text-white hover:shadow-lg hover:shadow-brand-primary/25 active:scale-[0.97] transition-all duration-200 cursor-pointer"
-        >
-          <Video className="w-4 h-4" />
-          Join Meet
-        </button>
+        </div>
       </div>
-    </div>
 
       {modalOpen && (
         <ResearchModal
@@ -203,4 +230,3 @@ export function ClientCard({
     </>
   );
 }
-

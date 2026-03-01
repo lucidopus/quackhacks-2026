@@ -6,7 +6,7 @@ export default function ClientsLayout({ children }: { children: React.ReactNode 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col font-sans">
       <div className="fixed inset-0 grid-background pointer-events-none" />
-      <header className="sticky top-0 z-10 bg-background/70 backdrop-blur-2xl border-b border-border-subtle">
+      <header className="sticky top-0 z-50 bg-background/70 backdrop-blur-2xl border-b border-border-subtle">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3 group">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-primary to-brand-accent-dark flex items-center justify-center shadow-lg shadow-brand-primary/20 group-hover:shadow-brand-primary/40 transition-shadow">

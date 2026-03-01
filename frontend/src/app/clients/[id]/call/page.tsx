@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useAudioPipeline } from "@/hooks/useAudioPipeline";
 import { LiveTranscript } from "@/components/LiveTranscript";
+import { SuggestionCard } from "@/components/SuggestionCard";
 import { use } from "react";
 
 interface CallPageProps {
@@ -25,9 +26,16 @@ export default function CallPage({ params }: CallPageProps) {
     company: string;
     role: string;
   } | null>(null);
-
-  const { isCapturing, error: captureError, startPipeline, stopPipeline } =
-    useAudioPipeline(callId, clientId);
+  
+  const { 
+    isCapturing, 
+    error: captureError, 
+    suggestions, 
+    transcripts,
+    startPipeline, 
+    stopPipeline, 
+    clearSuggestions 
+  } = useAudioPipeline(callId, clientId);
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -61,13 +69,8 @@ export default function CallPage({ params }: CallPageProps) {
     };
   }, [callStatus]);
 
-  // Sync isCapturing → callStatus
-  useEffect(() => {
-    if (isCapturing && callStatus === "listening") {
-      const id = setTimeout(() => setCallStatus("active"), 0);
-      return () => clearTimeout(id);
-    }
-  }, [isCapturing, callStatus]);
+  // Derive effective call status — avoids setState inside effect
+  const effectiveCallStatus = isCapturing && callStatus === "listening" ? "active" : callStatus;
 
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60)
@@ -100,56 +103,53 @@ export default function CallPage({ params }: CallPageProps) {
   }, [callId, stopPipeline]);
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col">
+    <div className="h-screen bg-background text-foreground flex flex-col overflow-hidden">
       <div className="fixed inset-0 grid-background pointer-events-none" />
 
-      {/* Header */}
-      <header className="relative z-10 border-b border-border-subtle bg-background/70 backdrop-blur-2xl">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+      {/* Main content */}
+      <div className="relative z-10 flex-1 flex flex-col max-w-7xl mx-auto w-full px-6 pt-10 pb-6 min-h-0 overflow-hidden">
+        {/* Simplified Header for Call Page */}
+        <div className="flex items-end justify-between mb-8">
           <div className="flex items-center gap-4">
-            <Link
-              href="/clients"
-              className="text-text-muted hover:text-text-primary transition-colors"
-            >
+            <Link href="/clients" className="text-text-muted hover:text-text-primary transition-colors">
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
               </svg>
             </Link>
             <div>
-              <h1 className="text-lg font-semibold">
+              <h1 className="text-xl font-bold tracking-tight">
                 {clientInfo ? `Call with ${clientInfo.name}` : "Live Call"}
               </h1>
-              <p className="text-sm text-text-muted">
-                {clientInfo ? `${clientInfo.company} · ${clientInfo.role}` : "Loading..."}
+              <p className="text-sm text-text-muted font-medium">
+                {clientInfo ? `${clientInfo.company} · ${clientInfo.role}` : "Initialing system..."}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            {callStatus === "active" && (
-              <>
-                <div className="w-2 h-2 rounded-full bg-status-danger-light animate-pulse" />
-                <span className="text-xs text-text-faint">Recording</span>
-                <span className="text-xs text-text-faint font-mono ml-2">
-                  {formatDuration(duration)}
-                </span>
-              </>
-            )}
-            {callStatus === "ended" && (
-              <>
-                <div className="w-2 h-2 rounded-full bg-text-faint" />
-                <span className="text-xs text-text-faint">
-                  Ended · {formatDuration(duration)}
-                </span>
-              </>
-            )}
+          <div className="flex flex-col items-end gap-2">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface-elevated/50 border border-border-subtle">
+              {effectiveCallStatus === "active" ? (
+                <>
+                  <div className="w-2 h-2 rounded-full bg-status-danger-light animate-pulse" />
+                  <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">Live Recording</span>
+                  <div className="w-px h-3 bg-border-subtle mx-1" />
+                  <span className="text-xs font-mono font-bold text-text-primary">
+                    {formatDuration(duration)}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <div className="w-2 h-2 rounded-full bg-text-faint" />
+                  <span className="text-[10px] font-bold text-text-faint uppercase tracking-widest">
+                    Ended · {formatDuration(duration)}
+                  </span>
+                </>
+              )}
+            </div>
           </div>
         </div>
-      </header>
 
-      {/* Main content */}
-      <div className="relative z-10 flex-1 flex flex-col max-w-7xl mx-auto w-full px-6 py-6">
-        <div className="flex-1 grid grid-cols-1 lg:grid-cols-5 gap-6 min-h-0">
+        <div className="flex-1 grid grid-cols-1 lg:grid-cols-5 gap-6 min-h-0 overflow-hidden">
           {/* Transcript Panel */}
           <div className="lg:col-span-3 rounded-2xl border border-border-subtle bg-surface/50 backdrop-blur-sm flex flex-col overflow-hidden">
             <div className="px-6 py-4 border-b border-border-subtle bg-surface-elevated/50 shrink-0">
@@ -157,24 +157,39 @@ export default function CallPage({ params }: CallPageProps) {
                 Live Transcript
               </div>
             </div>
-            <LiveTranscript callId={callId} />
+            <LiveTranscript callId={callId} segments={transcripts} />
           </div>
 
           {/* AI Suggestions Panel (Phase 5) */}
           <div className="lg:col-span-2 rounded-2xl border border-border-subtle bg-surface/50 backdrop-blur-sm flex flex-col overflow-hidden">
-            <div className="px-6 py-4 border-b border-border-subtle bg-surface-elevated/50 shrink-0">
+            <div className="px-6 py-4 border-b border-border-subtle bg-surface-elevated/50 shrink-0 flex items-center justify-between">
               <div className="text-[10px] font-semibold text-text-faint uppercase tracking-[0.15em]">
                 AI Suggestions
               </div>
+              {suggestions.length > 0 && (
+                <button 
+                  onClick={clearSuggestions}
+                  className="text-[10px] text-brand-primary hover:text-brand-accent transition-colors font-medium"
+                >
+                  Clear All
+                </button>
+              )}
             </div>
-            <div className="flex-1 flex items-center justify-center p-6">
-              <div className="text-center text-text-faint">
-                <svg className="w-10 h-10 mx-auto mb-3 opacity-20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
-                </svg>
-                <p className="text-sm">Suggestions will appear here during the call</p>
-                <p className="text-xs mt-1 opacity-60">Coming in Phase 5</p>
-              </div>
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
+              {suggestions.length === 0 ? (
+                <div className="h-full flex items-center justify-center p-6 grayscale opacity-50">
+                  <div className="text-center text-text-faint">
+                    <svg className="w-10 h-10 mx-auto mb-3 opacity-20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                    </svg>
+                    <p className="text-sm">Suggestions will appear here during the call</p>
+                  </div>
+                </div>
+              ) : (
+                suggestions.map((suggestion, idx) => (
+                  <SuggestionCard key={suggestion.id} suggestion={suggestion} isLatest={idx === 0} />
+                ))
+              )}
             </div>
           </div>
         </div>
@@ -187,7 +202,7 @@ export default function CallPage({ params }: CallPageProps) {
             </div>
           )}
 
-          {callStatus === "pending" && (
+          {effectiveCallStatus === "pending" && (
             <button
               onClick={handleStartListening}
               className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl bg-gradient-to-r from-brand-primary to-brand-accent-dark font-semibold text-white hover:shadow-xl hover:shadow-brand-primary/25 active:scale-[0.97] transition-all duration-200 cursor-pointer"
@@ -199,7 +214,7 @@ export default function CallPage({ params }: CallPageProps) {
             </button>
           )}
 
-          {callStatus === "listening" && (
+          {effectiveCallStatus === "listening" && (
             <div className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl bg-surface-elevated border border-border-subtle text-text-muted font-medium">
               <svg className="w-5 h-5 animate-spin" viewBox="0 0 24 24" fill="none">
                 <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" strokeDasharray="60" strokeDashoffset="15" />
@@ -208,7 +223,7 @@ export default function CallPage({ params }: CallPageProps) {
             </div>
           )}
 
-          {callStatus === "active" && (
+          {effectiveCallStatus === "active" && (
             <button
               onClick={handleEndCall}
               className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl bg-status-danger font-semibold text-white hover:bg-status-danger-light active:scale-[0.97] transition-all duration-200 cursor-pointer"
@@ -220,7 +235,7 @@ export default function CallPage({ params }: CallPageProps) {
             </button>
           )}
 
-          {callStatus === "ended" && (
+          {effectiveCallStatus === "ended" && (
             <div className="flex items-center gap-4">
               <div className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-surface-elevated border border-border-subtle text-text-muted font-medium">
                 <svg className="w-5 h-5 text-status-success" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -228,6 +243,15 @@ export default function CallPage({ params }: CallPageProps) {
                 </svg>
                 Call Ended
               </div>
+              <Link
+                href={`/clients/${clientId}/insights?callId=${callId}`}
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-brand-primary to-brand-accent-dark font-semibold text-white hover:shadow-xl hover:shadow-brand-primary/25 active:scale-[0.97] transition-all duration-200"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3v11.25A2.25 2.25 0 006 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0118 16.5h-2.25m-7.5 0h7.5m-7.5 0l-1 3m8.5-3l1 3m0 0l.5 1.5m-.5-1.5h-9.5m0 0l-.5 1.5" />
+                </svg>
+                Show Call Insights
+              </Link>
               <Link
                 href="/clients"
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-border-strong text-text-secondary font-medium hover:text-text-primary hover:bg-surface-elevated transition-all"

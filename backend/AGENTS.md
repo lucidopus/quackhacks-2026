@@ -42,3 +42,23 @@ Defined in `.env` (copy from `.env.example`):
 - Never do a `supabase db reset` without explicit user approval.
 - Sensitive client data (emails, phone numbers) must be PII-masked before LLM inference.
 - Browser must NOT connect directly to ElevenLabs — all audio routes through this backend.
+
+## ⚠️ MANDATORY: Verification After Every Change
+
+**You MUST run these checks after ANY backend code change, BEFORE presenting results to the user.**
+
+```bash
+# General backend syntax check
+cd backend && source venv/bin/activate && python -c "import app.main; print('✅ Backend OK')"
+
+# After modifying audio_relay.py
+python -c "import app.websocket.audio_relay; print('✅ audio_relay OK')"
+
+# After modifying classifier.py or suggestion_agent.py
+python -c "import app.services.classifier; import app.services.suggestion_agent; print('✅ Services OK')"
+
+# After modifying call_manager.py
+python -c "import app.services.call_manager; print('✅ CallManager OK')"
+```
+
+**Fix all errors before reporting success. Never say "it's deployed" if verification hasn't passed.**

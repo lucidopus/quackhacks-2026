@@ -12,6 +12,7 @@ import logging
 from fastapi import WebSocket
 
 from app.services.classifier import classify_transcript, CONFIDENCE_THRESHOLD
+from app.services.suggestion_agent import SuggestionAgent
 from app.database import get_supabase
 
 logger = logging.getLogger(__name__)
@@ -53,6 +54,9 @@ class CallManager:
         self.is_processing: bool = False  # Prevent concurrent classifier runs
         self._client_research: dict | None = None
         self._research_fetched: bool = False
+        self.suggestion_agent = SuggestionAgent(client_ws=client_ws)
+        self._triggered_topics: set[str] = set()  # Dedup: topics already triggered
+        self._last_trigger_time: float = 0.0  # Cooldown timer
 
     async def _ensure_research(self):
         """Lazy-load client research on first use."""
@@ -91,6 +95,7 @@ class CallManager:
             classification = await classify_transcript(
                 recent_segments=self.recent_segments,
                 client_context=self._client_research,
+                already_triggered=self._triggered_topics,
             )
 
             should_trigger = classification.get("should_trigger", False)
@@ -98,11 +103,29 @@ class CallManager:
 
             if should_trigger and confidence >= CONFIDENCE_THRESHOLD:
                 trigger_type = classification.get("trigger_type", "unknown")
-                logger.info(
-                    f"🚀 TRIGGER [{self.call_id}]: {trigger_type} "
-                    f"(confidence={confidence:.2f}) — {classification.get('reasoning', '')}"
-                )
-                asyncio.create_task(self.handle_trigger(classification))
+                
+                # Dedup: skip if we already triggered this exact topic
+                topic_key = trigger_type.lower().strip()
+                if topic_key in self._triggered_topics:
+                    logger.info(
+                        f"⏭️ Skipping duplicate trigger [{self.call_id}]: {trigger_type} (already triggered)"
+                    )
+                else:
+                    # Cooldown: at least 15 seconds between triggers
+                    import time
+                    now = time.time()
+                    if now - self._last_trigger_time < 15:
+                        logger.info(
+                            f"⏭️ Skipping trigger [{self.call_id}]: {trigger_type} (cooldown)"
+                        )
+                    else:
+                        self._triggered_topics.add(topic_key)
+                        self._last_trigger_time = now
+                        logger.info(
+                            f"🚀 TRIGGER [{self.call_id}]: {trigger_type} "
+                            f"(confidence={confidence:.2f}) — {classification.get('reasoning', '')}"
+                        )
+                        asyncio.create_task(self.handle_trigger(classification))
             else:
                 logger.debug(
                     f"No trigger (should_trigger={should_trigger}, confidence={confidence:.2f})"
@@ -113,37 +136,39 @@ class CallManager:
     async def handle_trigger(self, classification: dict):
         """Handle a classifier trigger.
 
-        Phase 4: Logs the trigger event and notifies frontend.
-        Phase 5: Will call the suggestion agent with full MCP tool access.
+        Generates a unique ID for this suggestion to track it through the pipeline.
         """
+        import uuid
+        suggestion_id = str(uuid.uuid4())
         trigger_type = classification.get("trigger_type", "unknown")
         confidence = classification.get("confidence", 0.0)
         reasoning = classification.get("reasoning", "")
 
         logger.info(
-            f"💡 [Phase 4] Notifying frontend of trigger for call {self.call_id}:\n"
-            f"   type={trigger_type} | confidence={confidence:.2f}\n"
-            f"   reason={reasoning}"
+            f"💡 Trigger detected for call {self.call_id}: {trigger_type} "
+            f"(id={suggestion_id})"
         )
 
         # Notify frontend so it can show a "Thinking..." or "Analyzing..." state
         if self.client_ws:
             try:
                 await self.client_ws.send_json({
+                    "id": suggestion_id,
                     "type": "suggestion_trigger",
                     "trigger_type": trigger_type,
                     "confidence": confidence,
                     "reasoning": reasoning,
-                    "status": "thinking", # Phase 4 identifies trigger, Phase 5 generates content
+                    "status": "thinking",
                 })
             except Exception as e:
                 logger.error(f"Failed to send trigger to frontend: {e}")
 
-        # Phase 5 hook: suggestion agent will be called here
-        # await suggestion_agent.generate(
-        #     call_id=self.call_id,
-        #     client_id=self.client_id,
-        #     trigger_type=trigger_type,
-        #     recent_segments=self.recent_segments,
-        #     classification=classification,
-        # )
+        # Phase 5: Active Suggestion Generation
+        asyncio.create_task(self.suggestion_agent.generate(
+            suggestion_id=suggestion_id,
+            call_id=self.call_id,
+            client_id=self.client_id,
+            trigger_type=trigger_type,
+            recent_segments=self.recent_segments,
+            classification=classification
+        ))

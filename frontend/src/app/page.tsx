@@ -1,3 +1,4 @@
+import Link from "next/link";
 import AnimateOnScroll from "@/components/AnimateOnScroll";
 import Link from "next/link";
 import { ThemeToggle } from "@/components/ThemeToggle";
